@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gear Simulator</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="container">
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <!-- Left Panel - Controls -->
+    <div id="controls-panel" class="panel">
+        <h2>Gear Controls</h2>
+
+        <!-- Gear Management -->
+        <div class="control-section">
+            <h3>Manage Gears</h3>
+            <button id="btn-add-gear">Add Gear</button>
+            <button id="btn-delete-gear">Delete Selected</button>
+            <button id="btn-reset-scene">Reset Scene</button>
+        </div>
+
+        <!-- Animation Controls -->
+        <div class="control-section">
+            <h3>Animation</h3>
+            <div class="input-group">
+                <label>Input RPM</label>
+                <input type="number" id="input-rpm" value="30" min="1" max="1000">
+            </div>
+            <button id="btn-play">Play</button>
+            <button id="btn-pause">Pause</button>
+            <button id="btn-reset-animation">Reset Rotation</button>
+        </div>
+
+        <!-- Gear Parameters -->
+        <div class="control-section">
+            <h3>Gear Parameters</h3>
+            <div class="input-group">
+                <label>Teeth</label>
+                <input type="number" id="param-teeth" value="20" min="8" max="100">
+            </div>
+            <div class="input-group">
+                <label>Module</label>
+                <input type="number" id="param-module" value="2" min="0.5" max="10" step="0.5">
+            </div>
+            <div class="input-group">
+                <label>Pressure Angle</label>
+                <input type="number" id="param-pressure-angle" value="20" min="14.5" max="25" step="0.5">
+            </div>
+            <div class="input-group">
+                <label>Thickness</label>
+                <input type="number" id="param-thickness" value="5" min="1" max="20">
+            </div>
+            <div class="input-group">
+                <label>Bore Diameter</label>
+                <input type="number" id="param-bore" value="5" min="1" max="20">
+            </div>
+            <div class="input-group">
+                <label>Color</label>
+                <input type="color" id="param-color" value="#4a90d9">
+            </div>
+        </div>
+
+        <!-- Position -->
+        <div class="control-section">
+            <h3>Position</h3>
+            <p class="hint">Drag gear to move. Shift+drag for Z-axis.</p>
+            <div class="input-group">
+                <label>X</label>
+                <input type="number" id="pos-x" value="0">
+            </div>
+            <div class="input-group">
+                <label>Y</label>
+                <input type="number" id="pos-y" value="0">
+            </div>
+            <div class="input-group">
+                <label>Z</label>
+                <input type="number" id="pos-z" value="0">
+            </div>
+        </div>
+
+        <!-- Display Options -->
+        <div class="control-section">
+            <h3>Display</h3>
+            <label class="checkbox-label">
+                <input type="checkbox" id="show-pitch-circle">
+                Show Pitch Circle
+            </label>
+            <label class="checkbox-label">
+                <input type="checkbox" id="show-center">
+                Show Center
+            </label>
+            <label class="checkbox-label">
+                <input type="checkbox" id="show-labels">
+                Show Labels
+            </label>
+            <button id="btn-theme-toggle">Toggle Theme</button>
+        </div>
+    </div>
+
+    <!-- Right Panel - Info -->
+    <div id="info-panel" class="panel">
+        <h2>Gear Info</h2>
+        <div id="gear-info-content">
+            <p class="placeholder">Select a gear to view info</p>
+        </div>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
