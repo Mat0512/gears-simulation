@@ -766,8 +766,8 @@ export class GearSimulator {
         this.scene.add(this.xrPanels.top);
 
         // Create debug panel
-        this.xrPanels.debug = this.createDebugPanel();
-        this.scene.add(this.xrPanels.debug);
+        // this.xrPanels.debug = this.createDebugPanel();
+        // this.scene.add(this.xrPanels.debug);
     }
 
     removeXRPanels() {
@@ -795,8 +795,8 @@ export class GearSimulator {
         const panel = new THREE.Group();
         panel.name = 'controlsPanel';
 
-        // Panel background
-        const bgGeometry = new THREE.PlaneGeometry(0.5, 0.7);
+        // Panel background (taller to accommodate new controls)
+        const bgGeometry = new THREE.PlaneGeometry(0.55, 1.3);
         const bgMaterial = new THREE.MeshBasicMaterial({
             color: 0x1a1a2e,
             transparent: true,
@@ -811,24 +811,25 @@ export class GearSimulator {
         const titleTexture = new THREE.CanvasTexture(titleCanvas);
         const titleMaterial = new THREE.MeshBasicMaterial({ map: titleTexture, transparent: true });
         const titleMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.06), titleMaterial);
-        titleMesh.position.set(0, 0.3, 0.01);
+        titleMesh.position.set(0, 0.58, 0.01);
         panel.add(titleMesh);
 
         // Gear Management buttons
-        let yPos = 0.2;
-        const buttonSpacing = 0.08;
+        let yPos = 0.48;
+        const buttonSpacing = 0.07;
+        const rowSpacing = 0.06;
 
-        const addGearBtn = this.create3DButton(0.4, 0.06, 'Add Gear', 0x4a90d9, () => this.addGear());
+        const addGearBtn = this.create3DButton(0.45, 0.05, 'Add Gear', 0x4a90d9, () => this.addGear());
         addGearBtn.position.set(0, yPos, 0.01);
         panel.add(addGearBtn);
 
-        yPos -= buttonSpacing;
-        const deleteBtn = this.create3DButton(0.4, 0.06, 'Delete Selected', 0xf44336, () => this.deleteSelectedGear());
+        yPos -= rowSpacing;
+        const deleteBtn = this.create3DButton(0.45, 0.05, 'Delete Selected', 0xf44336, () => this.deleteSelectedGear());
         deleteBtn.position.set(0, yPos, 0.01);
         panel.add(deleteBtn);
 
-        yPos -= buttonSpacing;
-        const resetBtn = this.create3DButton(0.4, 0.06, 'Reset Scene', 0xff9800, () => this.resetScene());
+        yPos -= rowSpacing;
+        const resetBtn = this.create3DButton(0.45, 0.05, 'Reset Scene', 0xff9800, () => this.resetScene());
         resetBtn.position.set(0, yPos, 0.01);
         panel.add(resetBtn);
 
@@ -837,29 +838,210 @@ export class GearSimulator {
         const animLabel = this.createTextCanvas('Animation', 150, 24, '14px Arial', '#a0a0a0');
         const animTexture = new THREE.CanvasTexture(animLabel);
         const animMaterial = new THREE.MeshBasicMaterial({ map: animTexture, transparent: true });
-        const animMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.05), animMaterial);
+        const animMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.04), animMaterial);
         animMesh.position.set(0, yPos, 0.01);
         panel.add(animMesh);
 
         // Play/Pause/Reset buttons in a row
-        yPos -= buttonSpacing;
-        const playBtn = this.create3DButton(0.12, 0.06, 'Play', 0x4caf50, () => this.play());
-        playBtn.position.set(-0.14, yPos, 0.01);
+        yPos -= rowSpacing;
+        const playBtn = this.create3DButton(0.13, 0.05, 'Play', 0x4caf50, () => this.play());
+        playBtn.position.set(-0.15, yPos, 0.01);
         panel.add(playBtn);
 
-        const pauseBtn = this.create3DButton(0.12, 0.06, 'Pause', 0xff9800, () => this.pause());
+        const pauseBtn = this.create3DButton(0.13, 0.05, 'Pause', 0xff9800, () => this.pause());
         pauseBtn.position.set(0, yPos, 0.01);
         panel.add(pauseBtn);
 
-        const resetAnimBtn = this.create3DButton(0.12, 0.06, 'Reset', 0x9e9e9e, () => this.resetAnimation());
-        resetAnimBtn.position.set(0.14, yPos, 0.01);
+        const resetAnimBtn = this.create3DButton(0.13, 0.05, 'Reset', 0x9e9e9e, () => this.resetAnimation());
+        resetAnimBtn.position.set(0.15, yPos, 0.01);
         panel.add(resetAnimBtn);
+
+        // RPM Control section
+        yPos -= buttonSpacing + 0.02;
+        const rpmLabel = this.createTextCanvas('Input RPM', 150, 24, '14px Arial', '#a0a0a0');
+        const rpmTexture = new THREE.CanvasTexture(rpmLabel);
+        const rpmMaterial = new THREE.MeshBasicMaterial({ map: rpmTexture, transparent: true });
+        const rpmMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.04), rpmMaterial);
+        rpmMesh.position.set(0, yPos, 0.01);
+        panel.add(rpmMesh);
+
+        yPos -= rowSpacing;
+        const rpmControl = this.createValueControl(
+            'rpm',
+            () => this.inputRPM,
+            (val) => { this.inputRPM = val; if (this.isPlaying) this.calculateGearSpeeds(); },
+            1, 1000, 10
+        );
+        rpmControl.position.set(0, yPos, 0.01);
+        panel.add(rpmControl);
+
+        // Gear Parameters section
+        yPos -= buttonSpacing + 0.02;
+        const paramsLabel = this.createTextCanvas('Gear Parameters', 180, 24, '14px Arial', '#a0a0a0');
+        const paramsTexture = new THREE.CanvasTexture(paramsLabel);
+        const paramsMaterial = new THREE.MeshBasicMaterial({ map: paramsTexture, transparent: true });
+        const paramsMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.35, 0.04), paramsMaterial);
+        paramsMesh.position.set(0, yPos, 0.01);
+        panel.add(paramsMesh);
+
+        // Teeth control
+        yPos -= rowSpacing;
+        const teethControl = this.createParamControl('Teeth', 'teeth', 8, 100, 1);
+        teethControl.position.set(0, yPos, 0.01);
+        panel.add(teethControl);
+
+        // Module control
+        yPos -= rowSpacing;
+        const moduleControl = this.createParamControl('Module', 'module', 0.5, 10, 0.5);
+        moduleControl.position.set(0, yPos, 0.01);
+        panel.add(moduleControl);
+
+        // Pressure Angle control
+        yPos -= rowSpacing;
+        const pressureControl = this.createParamControl('P.Angle', 'pressureAngle', 14.5, 25, 0.5);
+        pressureControl.position.set(0, yPos, 0.01);
+        panel.add(pressureControl);
+
+        // Thickness control
+        yPos -= rowSpacing;
+        const thicknessControl = this.createParamControl('Thick', 'thickness', 1, 20, 1);
+        thicknessControl.position.set(0, yPos, 0.01);
+        panel.add(thicknessControl);
+
+        // Bore Diameter control
+        yPos -= rowSpacing;
+        const boreControl = this.createParamControl('Bore', 'boreDiameter', 1, 20, 1);
+        boreControl.position.set(0, yPos, 0.01);
+        panel.add(boreControl);
 
         // Position panel to the left of user
         panel.position.set(-0.8, 1.2, -0.5);
         panel.rotation.y = Math.PI / 6; // 30 degrees
 
         return panel;
+    }
+
+    createValueControl(name, getValue, setValue, min, max, step) {
+        const group = new THREE.Group();
+        group.name = `${name}Control`;
+
+        // Value display
+        const valueCanvas = this.createTextCanvas(getValue().toString(), 80, 24, '14px Arial', '#ffffff');
+        const valueTexture = new THREE.CanvasTexture(valueCanvas);
+        const valueMaterial = new THREE.MeshBasicMaterial({ map: valueTexture, transparent: true });
+        const valueMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 0.04), valueMaterial);
+        valueMesh.position.set(0, 0, 0.01);
+        valueMesh.name = `${name}Value`;
+        group.add(valueMesh);
+
+        // Decrement button
+        const decBtn = this.create3DButton(0.08, 0.045, '-', 0x666666, () => {
+            const newVal = Math.max(min, getValue() - step);
+            setValue(newVal);
+            this.updateValueDisplay(valueMesh, newVal);
+        });
+        decBtn.position.set(-0.15, 0, 0.01);
+        group.add(decBtn);
+
+        // Increment button
+        const incBtn = this.create3DButton(0.08, 0.045, '+', 0x666666, () => {
+            const newVal = Math.min(max, getValue() + step);
+            setValue(newVal);
+            this.updateValueDisplay(valueMesh, newVal);
+        });
+        incBtn.position.set(0.15, 0, 0.01);
+        group.add(incBtn);
+
+        return group;
+    }
+
+    createParamControl(label, paramName, min, max, step) {
+        const group = new THREE.Group();
+        group.name = `${paramName}Control`;
+
+        // Label
+        const labelCanvas = this.createTextCanvas(label, 80, 24, '12px Arial', '#a0a0a0');
+        const labelTexture = new THREE.CanvasTexture(labelCanvas);
+        const labelMaterial = new THREE.MeshBasicMaterial({ map: labelTexture, transparent: true });
+        const labelMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 0.035), labelMaterial);
+        labelMesh.position.set(-0.17, 0, 0.01);
+        group.add(labelMesh);
+
+        // Value display
+        const getParamValue = () => {
+            if (this.selectedGear && this.selectedGear.params) {
+                return this.selectedGear.params[paramName];
+            }
+            // Return default from DOM if no gear selected
+            const inputId = `param-${paramName === 'pressureAngle' ? 'pressure-angle' : paramName === 'boreDiameter' ? 'bore' : paramName}`;
+            const input = document.getElementById(inputId);
+            return input ? parseFloat(input.value) : min;
+        };
+
+        const valueCanvas = this.createTextCanvas(getParamValue().toString(), 60, 24, '12px Arial', '#ffffff');
+        const valueTexture = new THREE.CanvasTexture(valueCanvas);
+        const valueMaterial = new THREE.MeshBasicMaterial({ map: valueTexture, transparent: true });
+        const valueMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.08, 0.035), valueMaterial);
+        valueMesh.position.set(0.02, 0, 0.01);
+        valueMesh.name = `${paramName}Value`;
+        group.add(valueMesh);
+
+        // Decrement button
+        const decBtn = this.create3DButton(0.06, 0.04, '-', 0x555555, () => {
+            this.adjustGearParam(paramName, -step, min, max, valueMesh);
+        });
+        decBtn.position.set(0.14, 0, 0.01);
+        group.add(decBtn);
+
+        // Increment button
+        const incBtn = this.create3DButton(0.06, 0.04, '+', 0x555555, () => {
+            this.adjustGearParam(paramName, step, min, max, valueMesh);
+        });
+        incBtn.position.set(0.22, 0, 0.01);
+        group.add(incBtn);
+
+        return group;
+    }
+
+    adjustGearParam(paramName, delta, min, max, valueMesh) {
+        if (!this.selectedGear) {
+            this.debugLog(`No gear selected`);
+            return;
+        }
+
+        const currentVal = this.selectedGear.params[paramName];
+        const newVal = Math.max(min, Math.min(max, currentVal + delta));
+
+        if (newVal === currentVal) return;
+
+        // Update the DOM input to match
+        const inputId = `param-${paramName === 'pressureAngle' ? 'pressure-angle' : paramName === 'boreDiameter' ? 'bore' : paramName}`;
+        const input = document.getElementById(inputId);
+        if (input) input.value = newVal;
+
+        // Apply the change
+        this.updateSelectedGearParams();
+
+        // Update display
+        this.updateValueDisplay(valueMesh, newVal);
+
+        this.debugLog(`${paramName}: ${newVal}`);
+    }
+
+    updateValueDisplay(mesh, value) {
+        if (!mesh || !mesh.material) return;
+
+        // Format value for display
+        const displayValue = Number.isInteger(value) ? value.toString() : value.toFixed(1);
+
+        // Dispose old texture
+        if (mesh.material.map) {
+            mesh.material.map.dispose();
+        }
+
+        const canvas = this.createTextCanvas(displayValue, 80, 24, '12px Arial', '#ffffff');
+        mesh.material.map = new THREE.CanvasTexture(canvas);
+        mesh.material.map.needsUpdate = true;
     }
 
     createInfoPanel() {
@@ -1079,6 +1261,38 @@ export class GearSimulator {
         // Update info panel content if selected gear changed
         if (this.xrPanels.right) {
             this.updateInfoPanelContent();
+        }
+
+        // Update controls panel parameter displays
+        if (this.xrPanels.left) {
+            this.updateXRControlsPanel();
+        }
+    }
+
+    updateXRControlsPanel() {
+        if (!this.xrPanels.left) return;
+
+        // Update RPM display
+        const rpmControl = this.xrPanels.left.getObjectByName('rpmControl');
+        if (rpmControl) {
+            const rpmValue = rpmControl.getObjectByName('rpmValue');
+            if (rpmValue) {
+                this.updateValueDisplay(rpmValue, this.inputRPM);
+            }
+        }
+
+        // Update gear parameter displays if a gear is selected
+        if (this.selectedGear && this.selectedGear.params) {
+            const params = ['teeth', 'module', 'pressureAngle', 'thickness', 'boreDiameter'];
+            params.forEach(paramName => {
+                const control = this.xrPanels.left.getObjectByName(`${paramName}Control`);
+                if (control) {
+                    const valueMesh = control.getObjectByName(`${paramName}Value`);
+                    if (valueMesh) {
+                        this.updateValueDisplay(valueMesh, this.selectedGear.params[paramName]);
+                    }
+                }
+            });
         }
     }
 
