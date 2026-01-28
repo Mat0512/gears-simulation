@@ -62,8 +62,13 @@ export class GearSimulator {
         this.xrPanels = {
             left: null,
             right: null,
-            top: null
+            top: null,
+            debug: null
         };
+
+        // Debug log buffer for VR panel
+        this.debugLogs = [];
+        this.maxDebugLogs = 8;
 
         // XR interaction state
         this.xrRaycaster = new THREE.Raycaster();
@@ -89,7 +94,7 @@ export class GearSimulator {
         this.createCamera();
         this.createRenderer();
         this.createLights();
-        this.createGrid();
+        // this.createGrid();
         this.createControls();
         this.setupEventListeners();
         this.animate();
@@ -235,6 +240,10 @@ export class GearSimulator {
         if (this.orbitControls) {
             this.orbitControls.enabled = false;
         }
+
+        // Log XR session start
+        this.debugLog('XR Session Started');
+        this.debugLog(`Gears in scene: ${this.gears.length}`);
     }
 
     onXRSessionEnd() {
@@ -271,6 +280,8 @@ export class GearSimulator {
         const controller = handedness === 'right' ? this.controller1 : this.controller2;
         const ray = handedness === 'right' ? this.controllerRay1 : this.controllerRay2;
 
+        this.debugLog(`SELECT [${handedness}]`);
+
         // Get controller position and direction
         const tempMatrix = new THREE.Matrix4();
         tempMatrix.identity().extractRotation(controller.matrixWorld);
@@ -297,6 +308,7 @@ export class GearSimulator {
                 if (ray) ray.visible = false;
             }
         } else {
+            this.debugLog(`  no gear hit, checking UI`);
             // Check for UI button intersection
             this.checkXRButtonPress(origin, direction, handedness);
         }
@@ -306,6 +318,7 @@ export class GearSimulator {
         const ray = handedness === 'right' ? this.controllerRay1 : this.controllerRay2;
 
         if (this.grabState[handedness].isGrabbing) {
+            this.debugLog(`SELECT END [${handedness}]`);
             this.releaseGrab(handedness);
         }
 
@@ -343,45 +356,86 @@ export class GearSimulator {
 
         // Select this gear
         this.selectGear(gear);
+
+        // Debug logging
+        const gearIndex = this.gears.indexOf(gear);
+        const pos = gear.mesh.position;
+        this.debugLog(`GRAB [${handedness}] Gear#${gearIndex} T:${gear.params.teeth}`);
+        this.debugLog(`  pos: (${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)})`);
     }
 
     releaseGrab(handedness) {
-        const state = this.grabState[handedness];
+        try {
+            const state = this.grabState[handedness];
 
-        if (!state.isGrabbing || !state.grabbedGear) return;
+            if (!state.isGrabbing || !state.grabbedGear) return;
 
-        const gear = state.grabbedGear;
+            const gear = state.grabbedGear;
+            const gearIndex = this.gears.indexOf(gear);
 
-        // Check for snap-to-mesh
-        const snapped = this.checkSnapToMesh(gear);
+            // Safely get position
+            const pos = gear.mesh ? gear.mesh.position : { x: 0, y: 0, z: 0 };
 
-        if (snapped) {
-            // Strong haptic for snap
-            this.triggerHaptic(handedness, 0.6, 100);
-            setTimeout(() => this.triggerHaptic(handedness, 0.6, 100), 120);
-        } else {
-            // Light haptic for release
-            this.triggerHaptic(handedness, 0.2, 30);
+            this.debugLog(`RELEASE [${handedness}] Gear#${gearIndex}`);
+            this.debugLog(`  pos: (${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)})`);
+
+            // Check for snap-to-mesh (with error handling)
+            let snapped = false;
+            try {
+                snapped = this.checkSnapToMesh(gear);
+            } catch (snapErr) {
+                this.debugLog(`  snap error: ${snapErr.message}`);
+            }
+
+            if (snapped) {
+                this.debugLog(`  SNAPPED!`);
+                // Strong haptic for snap
+                this.triggerHaptic(handedness, 0.6, 100);
+                setTimeout(() => this.triggerHaptic(handedness, 0.6, 100), 120);
+            } else {
+                // Light haptic for release
+                this.triggerHaptic(handedness, 0.2, 30);
+            }
+
+            // Reset gear visual state
+            if (gear.mesh) {
+                gear.mesh.scale.set(1, 1, 1);
+                if (gear.mesh.material) {
+                    if (gear === this.selectedGear) {
+                        gear.mesh.material.emissive.setHex(0x444444);
+                    } else {
+                        gear.mesh.material.emissive.setHex(0x000000);
+                    }
+                }
+                gear.mesh.userData.isGrabbed = false;
+                gear.mesh.userData.grabHand = null;
+            }
+
+            // Clear state BEFORE updateConnections
+            state.isGrabbing = false;
+            state.grabbedGear = null;
+            state.grabOffset.set(0, 0, 0);
+
+            // Update connections (with error handling)
+            try {
+                this.updateConnections();
+            } catch (connErr) {
+                this.debugLog(`  conn error: ${connErr.message}`);
+            }
+
+            this.debugLog(`  release complete`);
+        } catch (err) {
+            console.error('releaseGrab error:', err);
+            this.debugLog(`ERROR: ${err.message}`);
+
+            // Force clear state on error
+            const state = this.grabState[handedness];
+            if (state) {
+                state.isGrabbing = false;
+                state.grabbedGear = null;
+                state.grabOffset.set(0, 0, 0);
+            }
         }
-
-        // Reset gear visual state
-        gear.mesh.scale.set(1, 1, 1);
-        if (gear === this.selectedGear) {
-            gear.mesh.material.emissive.setHex(0x444444);
-        } else {
-            gear.mesh.material.emissive.setHex(0x000000);
-        }
-
-        gear.mesh.userData.isGrabbed = false;
-        gear.mesh.userData.grabHand = null;
-
-        // Clear state
-        state.isGrabbing = false;
-        state.grabbedGear = null;
-        state.grabOffset.set(0, 0, 0);
-
-        // Update connections
-        this.updateConnections();
     }
 
     updateXRInteraction() {
@@ -476,6 +530,8 @@ export class GearSimulator {
         // Convert pinch position to local worldGroup space for distance comparison
         const pinchPosLocal = this.worldGroup.worldToLocal(pinchPosWorld.clone());
 
+        this.debugLog(`PINCH [${handedness}] detected`);
+
         // Find nearest gear (gear positions are in local space)
         let nearestGear = null;
         let nearestDist = Infinity;
@@ -504,11 +560,14 @@ export class GearSimulator {
             };
 
             this.beginGrab(nearestGear, handedness, pinchPosWorld, handController);
+        } else {
+            this.debugLog(`  no gear in range (dist: ${nearestDist.toFixed(1)})`);
         }
     }
 
     onPinchEnd(hand, handedness) {
         if (this.grabState[handedness].isGrabbing) {
+            this.debugLog(`PINCH END [${handedness}]`);
             this.releaseGrab(handedness);
         }
     }
@@ -705,6 +764,10 @@ export class GearSimulator {
         // Create top quick actions panel
         this.xrPanels.top = this.createQuickActionsPanel();
         this.scene.add(this.xrPanels.top);
+
+        // Create debug panel
+        this.xrPanels.debug = this.createDebugPanel();
+        this.scene.add(this.xrPanels.debug);
     }
 
     removeXRPanels() {
@@ -720,6 +783,12 @@ export class GearSimulator {
             this.scene.remove(this.xrPanels.top);
             this.xrPanels.top = null;
         }
+        if (this.xrPanels.debug) {
+            this.scene.remove(this.xrPanels.debug);
+            this.xrPanels.debug = null;
+        }
+        // Clear debug logs when exiting XR
+        this.debugLogs = [];
     }
 
     createControlsPanel() {
@@ -867,6 +936,89 @@ export class GearSimulator {
         return panel;
     }
 
+    createDebugPanel() {
+        const panel = new THREE.Group();
+        panel.name = 'debugPanel';
+
+        // Panel background
+        const bgGeometry = new THREE.PlaneGeometry(0.5, 0.4);
+        const bgMaterial = new THREE.MeshBasicMaterial({
+            color: 0x0a0a1a,
+            transparent: true,
+            opacity: 0.95,
+            side: THREE.DoubleSide
+        });
+        const background = new THREE.Mesh(bgGeometry, bgMaterial);
+        panel.add(background);
+
+        // Title
+        const titleCanvas = this.createTextCanvas('Debug Log', 200, 30, '18px Arial', '#ff6b6b');
+        const titleTexture = new THREE.CanvasTexture(titleCanvas);
+        const titleMaterial = new THREE.MeshBasicMaterial({ map: titleTexture, transparent: true });
+        const titleMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.06), titleMaterial);
+        titleMesh.position.set(0, 0.15, 0.01);
+        panel.add(titleMesh);
+
+        // Debug content placeholder
+        const debugCanvas = this.createTextCanvas('Waiting for events...', 240, 180, '12px monospace', '#00ff00', true);
+        const debugTexture = new THREE.CanvasTexture(debugCanvas);
+        const debugMaterial = new THREE.MeshBasicMaterial({ map: debugTexture, transparent: true });
+        const debugMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.45, 0.28), debugMaterial);
+        debugMesh.position.set(0, -0.04, 0.01);
+        debugMesh.name = 'debugContent';
+        panel.add(debugMesh);
+
+        // Position panel below and to the left (near left wrist in VR)
+        panel.position.set(-0.6, 0.8, -0.3);
+        panel.rotation.y = Math.PI / 5; // Angled toward user
+
+        return panel;
+    }
+
+    debugLog(message) {
+        const timestamp = new Date().toLocaleTimeString('en-US', {
+            hour12: false,
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+        const logEntry = `[${timestamp}] ${message}`;
+
+        this.debugLogs.push(logEntry);
+
+        // Keep only the last N logs
+        if (this.debugLogs.length > this.maxDebugLogs) {
+            this.debugLogs.shift();
+        }
+
+        // Update the debug panel if it exists
+        this.updateDebugPanel();
+
+        // Also log to console for non-VR debugging
+        console.log('[XR Debug]', message);
+    }
+
+    updateDebugPanel() {
+        if (!this.xrPanels.debug) return;
+
+        const debugMesh = this.xrPanels.debug.getObjectByName('debugContent');
+        if (!debugMesh || !debugMesh.material) return;
+
+        const text = this.debugLogs.length > 0
+            ? this.debugLogs.join('\n')
+            : 'Waiting for events...';
+
+        const canvas = this.createTextCanvas(text, 240, 180, '11px monospace', '#00ff00', true);
+
+        // Dispose old texture to prevent memory leak
+        if (debugMesh.material.map) {
+            debugMesh.material.map.dispose();
+        }
+
+        debugMesh.material.map = new THREE.CanvasTexture(canvas);
+        debugMesh.material.map.needsUpdate = true;
+    }
+
     create3DButton(width, height, label, color, onClick) {
         const button = new THREE.Group();
 
@@ -932,10 +1084,10 @@ export class GearSimulator {
 
     updateInfoPanelContent() {
         const infoMesh = this.xrPanels.right?.getObjectByName('infoContent');
-        if (!infoMesh) return;
+        if (!infoMesh || !infoMesh.material) return;
 
         let text;
-        if (this.selectedGear) {
+        if (this.selectedGear && this.selectedGear.params) {
             const gear = this.selectedGear;
             const directionText = gear.rotationDirection >= 0 ? 'CW' : 'CCW';
             text = `Teeth: ${gear.params.teeth}\n` +
@@ -943,9 +1095,14 @@ export class GearSimulator {
                    `Module: ${gear.params.module}\n` +
                    `RPM: ${gear.rpm.toFixed(1)}\n` +
                    `Direction: ${directionText}\n` +
-                   `Connected: ${gear.connectedTo.length}`;
+                   `Connected: ${gear.connectedTo ? gear.connectedTo.length : 0}`;
         } else {
             text = 'Select a gear\nto view info';
+        }
+
+        // Dispose old texture to prevent memory leak
+        if (infoMesh.material.map) {
+            infoMesh.material.map.dispose();
         }
 
         // Update texture
@@ -1153,10 +1310,15 @@ export class GearSimulator {
     }
 
     checkSnapToMesh(movingGear) {
+        if (!movingGear || !movingGear.mesh || !movingGear.params) {
+            return false;
+        }
+
         const snapThreshold = 5;
 
         for (const gear of this.gears) {
             if (gear === movingGear) continue;
+            if (!gear || !gear.mesh || !gear.params) continue;
 
             const idealDistance = (movingGear.params.pitchDiameter + gear.params.pitchDiameter) / 2;
             const currentDistance = movingGear.mesh.position.distanceTo(gear.mesh.position);
@@ -1176,19 +1338,29 @@ export class GearSimulator {
                 if (!movingGear.connectedTo.includes(gear)) {
                     this.connectGears(movingGear, gear);
                 }
-                break;
+                return true; // Snapped!
             }
         }
+        return false; // No snap
     }
 
     connectGears(gear1, gear2) {
+        if (!gear1 || !gear2) return;
+
+        if (!gear1.connectedTo) gear1.connectedTo = [];
+        if (!gear2.connectedTo) gear2.connectedTo = [];
+
         if (!gear1.connectedTo.includes(gear2)) {
             gear1.connectedTo.push(gear2);
         }
         if (!gear2.connectedTo.includes(gear1)) {
             gear2.connectedTo.push(gear1);
         }
-        this.updateGearInfo();
+
+        // Only update gear info if not in XR (DOM update)
+        if (!this.isXRPresenting) {
+            this.updateGearInfo();
+        }
     }
 
     updateConnections() {
@@ -1196,13 +1368,18 @@ export class GearSimulator {
         const meshThreshold = 3;
 
         for (const gear of this.gears) {
-            gear.connectedTo = [];
+            if (gear) gear.connectedTo = [];
         }
 
         for (let i = 0; i < this.gears.length; i++) {
             for (let j = i + 1; j < this.gears.length; j++) {
                 const gear1 = this.gears[i];
                 const gear2 = this.gears[j];
+
+                // Safety checks
+                if (!gear1 || !gear2) continue;
+                if (!gear1.mesh || !gear2.mesh) continue;
+                if (!gear1.params || !gear2.params) continue;
 
                 const idealDistance = (gear1.params.pitchDiameter + gear2.params.pitchDiameter) / 2;
                 const currentDistance = gear1.mesh.position.distanceTo(gear2.mesh.position);
@@ -1550,21 +1727,30 @@ export class GearSimulator {
     }
 
     render(time, frame) {
-        const deltaTime = 1 / 60; // Assuming 60 FPS
+        try {
+            const deltaTime = 1 / 60; // Assuming 60 FPS
 
-        if (this.isPlaying) {
-            this.updatePhysics(deltaTime);
+            if (this.isPlaying) {
+                this.updatePhysics(deltaTime);
+            }
+
+            // XR-specific updates
+            if (this.isXRPresenting) {
+                try {
+                    this.updateXRInteraction();
+                } catch (xrErr) {
+                    console.error('XR interaction error:', xrErr);
+                    this.debugLog(`XR ERR: ${xrErr.message}`);
+                }
+                this.updateXRUI();
+            } else {
+                this.orbitControls.update();
+            }
+
+            this.renderer.render(this.scene, this.camera);
+        } catch (renderErr) {
+            console.error('Render loop error:', renderErr);
         }
-
-        // XR-specific updates
-        if (this.isXRPresenting) {
-            this.updateXRInteraction();
-            this.updateXRUI();
-        } else {
-            this.orbitControls.update();
-        }
-
-        this.renderer.render(this.scene, this.camera);
     }
 
     updatePhysics(deltaTime) {

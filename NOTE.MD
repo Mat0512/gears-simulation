@@ -40,4 +40,4 @@ main.js
 
 vite.config.js
 
-Clear explanations for how the hand replaces the mouse cursor in VR
+Clear explanations for how the hand replaces the mouse cursor in 
