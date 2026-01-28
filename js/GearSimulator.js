@@ -98,6 +98,12 @@ export class GearSimulator {
     createScene() {
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x1a1a2e);
+
+        // World group for scaling in XR mode
+        // Gears and grid are added here, scaled together in VR
+        this.worldGroup = new THREE.Group();
+        this.worldGroup.name = 'worldGroup';
+        this.scene.add(this.worldGroup);
     }
 
     createCamera() {
@@ -214,6 +220,14 @@ export class GearSimulator {
         if (controlsPanel) controlsPanel.style.display = 'none';
         if (infoPanel) infoPanel.style.display = 'none';
 
+        // Scale world group for VR (convert mm to meters)
+        // Original units are in mm, XR expects meters
+        // xrScale = 0.01 means 1 unit = 1cm (so 40mm gear = 0.4m = 40cm diameter)
+        this.worldGroup.scale.setScalar(this.xrScale);
+
+        // Position the world in front of and below the user for comfortable viewing
+        this.worldGroup.position.set(0, 1.0, -0.5);
+
         // Create 3D UI panels
         this.createXRPanels();
 
@@ -232,6 +246,10 @@ export class GearSimulator {
         const infoPanel = document.getElementById('info-panel');
         if (controlsPanel) controlsPanel.style.display = '';
         if (infoPanel) infoPanel.style.display = '';
+
+        // Reset world group scale and position
+        this.worldGroup.scale.setScalar(1);
+        this.worldGroup.position.set(0, 0, 0);
 
         // Remove 3D UI panels
         this.removeXRPanels();
@@ -302,9 +320,15 @@ export class GearSimulator {
         state.grabbedGear = gear;
 
         // Calculate offset from controller to gear center
+        // Need to transform controller world position to worldGroup local space
         const controllerPos = new THREE.Vector3();
         controller.getWorldPosition(controllerPos);
-        state.grabOffset.copy(gear.mesh.position).sub(controllerPos);
+
+        // Convert controller position to local worldGroup space
+        const localControllerPos = this.worldGroup.worldToLocal(controllerPos.clone());
+
+        // Offset is in local space (gear position is already in local space)
+        state.grabOffset.copy(gear.mesh.position).sub(localControllerPos);
 
         // Mark gear as grabbed
         gear.mesh.userData.isGrabbed = true;
@@ -387,20 +411,23 @@ export class GearSimulator {
 
         if (!state.isGrabbing || !state.grabbedGear) return;
 
-        // Get current position from controller or hand
-        const currentPos = new THREE.Vector3();
+        // Get current position from controller or hand (in world space)
+        const worldPos = new THREE.Vector3();
 
         // Prefer hand position if available, otherwise use controller
         if (hand && hand.joints && hand.joints['wrist']) {
-            hand.joints['wrist'].getWorldPosition(currentPos);
+            hand.joints['wrist'].getWorldPosition(worldPos);
         } else if (controller) {
-            controller.getWorldPosition(currentPos);
+            controller.getWorldPosition(worldPos);
         } else {
             return;
         }
 
-        // Move gear to follow hand/controller with offset
-        state.grabbedGear.mesh.position.copy(currentPos).add(state.grabOffset);
+        // Convert world position to local worldGroup space
+        const localPos = this.worldGroup.worldToLocal(worldPos.clone());
+
+        // Move gear to follow hand/controller with offset (in local space)
+        state.grabbedGear.mesh.position.copy(localPos).add(state.grabOffset);
     }
 
     updatePinchDetection(hand, handedness) {
@@ -433,7 +460,7 @@ export class GearSimulator {
     }
 
     onPinchStart(hand, handedness) {
-        // Get pinch position (midpoint between thumb and index)
+        // Get pinch position (midpoint between thumb and index) in world space
         const thumbTip = hand.joints['thumb-tip'];
         const indexTip = hand.joints['index-finger-tip'];
 
@@ -444,15 +471,19 @@ export class GearSimulator {
         thumbTip.getWorldPosition(thumbPos);
         indexTip.getWorldPosition(indexPos);
 
-        const pinchPos = thumbPos.clone().add(indexPos).multiplyScalar(0.5);
+        const pinchPosWorld = thumbPos.clone().add(indexPos).multiplyScalar(0.5);
 
-        // Find nearest gear
+        // Convert pinch position to local worldGroup space for distance comparison
+        const pinchPosLocal = this.worldGroup.worldToLocal(pinchPosWorld.clone());
+
+        // Find nearest gear (gear positions are in local space)
         let nearestGear = null;
         let nearestDist = Infinity;
 
         for (const gear of this.gears) {
-            const dist = gear.mesh.position.distanceTo(pinchPos);
-            const grabRadius = 0.05 + (gear.params.pitchDiameter * this.xrScale / 2);
+            const dist = gear.mesh.position.distanceTo(pinchPosLocal);
+            // grabRadius in local space (pitch diameter is in mm)
+            const grabRadius = 5 + (gear.params.pitchDiameter / 2);
 
             if (dist < grabRadius && dist < nearestDist) {
                 nearestDist = dist;
@@ -472,7 +503,7 @@ export class GearSimulator {
                 }
             };
 
-            this.beginGrab(nearestGear, handedness, pinchPos, handController);
+            this.beginGrab(nearestGear, handedness, pinchPosWorld, handController);
         }
     }
 
@@ -602,7 +633,7 @@ export class GearSimulator {
     updateTwoHandGrab() {
         if (!this.twoHandGrab.active || !this.twoHandGrab.gear) return;
 
-        // Get current hand distance
+        // Get current hand distance (in world space)
         const controller1Pos = new THREE.Vector3();
         const controller2Pos = new THREE.Vector3();
         this.controller1.getWorldPosition(controller1Pos);
@@ -613,7 +644,10 @@ export class GearSimulator {
         // Map distance change to Z position
         // Moving hands apart = positive Z, moving hands together = negative Z
         const distanceDelta = currentDistance - this.twoHandGrab.initialHandDistance;
-        const zSensitivity = 100; // Adjust for finer/coarser control
+
+        // Sensitivity adjusted for scaled world (hand distance is in meters, gear Z is in mm)
+        // Divide by xrScale to convert world meters to local mm
+        const zSensitivity = 1 / this.xrScale;
 
         this.twoHandGrab.gear.mesh.position.z = this.twoHandGrab.initialGearZ + distanceDelta * zSensitivity;
     }
@@ -944,7 +978,7 @@ export class GearSimulator {
     createGrid() {
         const gridHelper = new THREE.GridHelper(200, 40, 0x444444, 0x333333);
         gridHelper.rotation.x = Math.PI / 2;
-        this.scene.add(gridHelper);
+        this.worldGroup.add(gridHelper);
 
         // Ground plane for shadows
         const planeGeometry = new THREE.PlaneGeometry(200, 200);
@@ -952,7 +986,7 @@ export class GearSimulator {
         this.groundPlane = new THREE.Mesh(planeGeometry, planeMaterial);
         this.groundPlane.position.z = -1;
         this.groundPlane.receiveShadow = true;
-        this.scene.add(this.groundPlane);
+        this.worldGroup.add(this.groundPlane);
     }
 
     createControls() {
@@ -1243,9 +1277,9 @@ export class GearSimulator {
         const position = this.selectedGear.mesh.position.clone();
         const rotation = this.selectedGear.mesh.rotation.z;
 
-        this.scene.remove(this.selectedGear.mesh);
-        if (this.selectedGear.pitchCircle) this.scene.remove(this.selectedGear.pitchCircle);
-        if (this.selectedGear.centerMarker) this.scene.remove(this.selectedGear.centerMarker);
+        this.worldGroup.remove(this.selectedGear.mesh);
+        if (this.selectedGear.pitchCircle) this.worldGroup.remove(this.selectedGear.pitchCircle);
+        if (this.selectedGear.centerMarker) this.worldGroup.remove(this.selectedGear.centerMarker);
 
         const gearGeom = new GearGeometry(params);
         const geometry = gearGeom.createGeometry();
@@ -1261,7 +1295,7 @@ export class GearSimulator {
         mesh.position.copy(position);
         mesh.rotation.z = rotation;
 
-        this.scene.add(mesh);
+        this.worldGroup.add(mesh);
 
         // Update gear object
         this.selectedGear.mesh = mesh;
@@ -1318,7 +1352,7 @@ export class GearSimulator {
         const offset = this.gears.length * 50;
         mesh.position.set(offset, 0, 0);
 
-        this.scene.add(mesh);
+        this.worldGroup.add(mesh);
 
         const gear = {
             mesh: mesh,
@@ -1369,7 +1403,7 @@ export class GearSimulator {
             gear.connectedTo = gear.connectedTo.filter(g => g !== this.selectedGear);
         }
 
-        this.scene.remove(this.selectedGear.mesh);
+        this.worldGroup.remove(this.selectedGear.mesh);
         this.gears = this.gears.filter(g => g !== this.selectedGear);
         this.selectedGear = null;
         this.updateGearInfo();
@@ -1377,7 +1411,7 @@ export class GearSimulator {
 
     resetScene() {
         for (const gear of this.gears) {
-            this.scene.remove(gear.mesh);
+            this.worldGroup.remove(gear.mesh);
         }
         this.gears = [];
         this.selectedGear = null;
