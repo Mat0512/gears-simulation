@@ -2,6 +2,8 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+      cursor: url("/public/hand-cursor.png") 16 0, pointer;
+
 }
 
 :root {

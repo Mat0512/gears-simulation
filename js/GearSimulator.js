@@ -798,7 +798,7 @@ export class GearSimulator {
         // Panel background (taller to accommodate new controls)
         const bgGeometry = new THREE.PlaneGeometry(0.55, 1.3);
         const bgMaterial = new THREE.MeshBasicMaterial({
-            color: 0x1a1a2e,
+            color: 0x0f3460,
             transparent: true,
             opacity: 0.9,
             side: THREE.DoubleSide
@@ -1051,7 +1051,7 @@ export class GearSimulator {
         // Panel background
         const bgGeometry = new THREE.PlaneGeometry(0.4, 0.5);
         const bgMaterial = new THREE.MeshBasicMaterial({
-            color: 0x1a1a2e,
+            color: 0x0f3460,
             transparent: true,
             opacity: 0.9,
             side: THREE.DoubleSide
