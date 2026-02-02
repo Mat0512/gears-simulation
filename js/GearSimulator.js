@@ -96,7 +96,42 @@ export class GearSimulator {
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
 
+    // Audio
+    this.sounds = {
+      playGear: null,
+      placeGear: null,
+    };
+    this.initAudio();
+
     this.init();
+  }
+
+  initAudio() {
+    // Load sound effects
+    this.sounds.playGear = new Audio("/public/play-gear.mp3");
+    this.sounds.placeGear = new Audio("/public/place-gear.mp3");
+
+    // Preload audio
+    this.sounds.playGear.load();
+    this.sounds.placeGear.load();
+  }
+
+  playSound(soundName) {
+    const sound = this.sounds[soundName];
+    if (sound) {
+      sound.currentTime = 0;
+      sound.play().catch(() => {
+        // Ignore autoplay errors
+      });
+    }
+  }
+
+  stopSound(soundName) {
+    const sound = this.sounds[soundName];
+    if (sound) {
+      sound.pause();
+      sound.currentTime = 0;
+    }
   }
 
   init() {
@@ -2013,6 +2048,10 @@ export class GearSimulator {
         if (!movingGear.connectedTo.includes(gear)) {
           this.connectGears(movingGear, gear);
         }
+
+        // Play snap sound
+        this.playSound("placeGear");
+
         return true; // Snapped!
       }
     }
@@ -2864,14 +2903,17 @@ export class GearSimulator {
 
     this.isPlaying = true;
     this.calculateGearSpeeds();
+    this.playSound("playGear");
   }
 
   pause() {
     this.isPlaying = false;
+    this.stopSound("playGear");
   }
 
   resetAnimation() {
     this.isPlaying = false;
+    this.stopSound("playGear");
     for (const gear of this.gears) {
       gear.mesh.rotation.z = 0;
     }
