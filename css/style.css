@@ -281,3 +281,54 @@ body.xr-presenting #info-panel {
     font-weight: 500;
     z-index: 100;
 }
+
+/* Incompatibility Message Panel */
+#incompatibility-message {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(244, 67, 54, 0.95);
+    color: white;
+    padding: 16px 24px;
+    border-radius: 8px;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 4px 20px rgba(244, 67, 54, 0.4);
+    animation: pulse-glow 1.5s ease-in-out infinite;
+}
+
+#incompatibility-message .warning-icon {
+    font-size: 24px;
+    font-weight: bold;
+    width: 32px;
+    height: 32px;
+    background: white;
+    color: #f44336;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+#incompatibility-message .message-text {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+@keyframes pulse-glow {
+    0%, 100% {
+        box-shadow: 0 4px 20px rgba(244, 67, 54, 0.4);
+    }
+    50% {
+        box-shadow: 0 4px 30px rgba(244, 67, 54, 0.6);
+    }
+}
+
+/* Hide incompatibility message in XR mode */
+body.xr-presenting #incompatibility-message {
+    display: none !important;
+}

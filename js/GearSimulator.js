@@ -73,6 +73,7 @@ export class GearSimulator {
       right: null,
       top: null,
       debug: null,
+      incompatibility: null,
     };
 
     // Debug log buffer for VR panel
@@ -111,6 +112,7 @@ export class GearSimulator {
 
   createScene() {
     this.scene = new THREE.Scene();
+    // Set default background color (dark mode)
     this.scene.background = new THREE.Color(0x1a1a2e);
 
     // World group for scaling in XR mode
@@ -131,6 +133,7 @@ export class GearSimulator {
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
       antialias: true,
+      alpha: true
     });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -252,6 +255,10 @@ export class GearSimulator {
     this.isXRPresenting = true;
     document.body.classList.add("xr-presenting");
 
+    // Store original background and make transparent for passthrough
+    this.originalBackground = this.scene.background;
+    this.scene.background = null;
+
     // Hide HTML panels
     const controlsPanel = document.getElementById("controls-panel");
     const infoPanel = document.getElementById("info-panel");
@@ -283,6 +290,11 @@ export class GearSimulator {
     this.isXRPresenting = false;
     document.body.classList.remove("xr-presenting");
 
+    // Restore original background
+    if (this.originalBackground !== undefined) {
+      this.scene.background = this.originalBackground;
+    }
+
     // Show HTML panels
     const controlsPanel = document.getElementById("controls-panel");
     const infoPanel = document.getElementById("info-panel");
@@ -313,6 +325,14 @@ export class GearSimulator {
       grabOffset: new THREE.Vector3(),
     };
     this.twoHandGrab.active = false;
+
+    // Hide XR incompatibility message and clear all gear incompatible states
+    this.hideXRIncompatibilityMessage();
+    for (const gear of this.gears) {
+      if (gear && gear.incompatibleWith) {
+        this.clearIncompatibleState(gear);
+      }
+    }
   }
 
   // ==================== XR INTERACTION METHODS ====================
@@ -397,7 +417,6 @@ export class GearSimulator {
     gear.mesh.scale.set(1.02, 1.02, 1.02);
     gear.mesh.material.emissive.setHex(0x555555);
 
-
     // Select this gear
     this.selectGear(gear);
 
@@ -443,7 +462,8 @@ export class GearSimulator {
       // Reset gear visual state
       if (gear.mesh) {
         gear.mesh.scale.set(1, 1, 1);
-        if (gear.mesh.material) {
+        // Only reset emissive if NOT in incompatible state
+        if (gear.mesh.material && !gear.incompatibleWith) {
           if (gear === this.selectedGear) {
             gear.mesh.material.emissive.setHex(0x00aa00);
           } else {
@@ -469,7 +489,6 @@ export class GearSimulator {
       this.debugLog(`  release complete`);
     } catch (err) {
       console.error("releaseGrab error:", err);
-   
 
       // // Force clear state on error
       const state = this.grabState[handedness];
@@ -691,31 +710,31 @@ export class GearSimulator {
     });
   }
 
-//   triggerHaptic(handedness, intensity, duration) {
-//     const controller =
-//       handedness === "right" ? this.controller1 : this.controller2;
+  //   triggerHaptic(handedness, intensity, duration) {
+  //     const controller =
+  //       handedness === "right" ? this.controller1 : this.controller2;
 
-//     if (!controller) return;
+  //     if (!controller) return;
 
-//     const session = this.renderer.xr.getSession();
-//     if (!session) return;
+  //     const session = this.renderer.xr.getSession();
+  //     if (!session) return;
 
-//     // Find the gamepad for this controller
-//     const inputSource = session.inputSources.find((source) => {
-//       return source.handedness === handedness;
-//     });
+  //     // Find the gamepad for this controller
+  //     const inputSource = session.inputSources.find((source) => {
+  //       return source.handedness === handedness;
+  //     });
 
-//     if (
-//       inputSource &&
-//       inputSource.gamepad &&
-//       inputSource.gamepad.hapticActuators
-//     ) {
-//       const actuator = inputSource.gamepad.hapticActuators[0];
-//       if (actuator) {
-//         actuator.pulse(intensity, duration);
-//       }
-//     }
-//   }
+  //     if (
+  //       inputSource &&
+  //       inputSource.gamepad &&
+  //       inputSource.gamepad.hapticActuators
+  //     ) {
+  //       const actuator = inputSource.gamepad.hapticActuators[0];
+  //       if (actuator) {
+  //         actuator.pulse(intensity, duration);
+  //       }
+  //     }
+  //   }
 
   // ==================== TWO-HAND Z-AXIS CONTROL ====================
 
@@ -738,8 +757,6 @@ export class GearSimulator {
       this.twoHandGrab.initialHandDistance =
         controller1Pos.distanceTo(controller2Pos);
       this.twoHandGrab.initialGearZ = otherState.grabbedGear.mesh.position.z;
-
-     
     }
   }
 
@@ -1278,6 +1295,7 @@ export class GearSimulator {
       side: THREE.DoubleSide,
     });
     const background = new THREE.Mesh(bgGeometry, bgMaterial);
+    background.name = "infoPanelBackground";
     panel.add(background);
 
     // Title
@@ -1609,19 +1627,78 @@ export class GearSimulator {
     if (!infoMesh || !infoMesh.material) return;
 
     let text;
+    let textColor = "#e8e8e8";
+    let errorState = null; // null, "incompatible", "jamming", or "overlap"
+
     if (this.selectedGear && this.selectedGear.params) {
       const gear = this.selectedGear;
       const directionText = gear.rotationDirection >= 0 ? "CW" : "CCW";
-      text =
-        `--- Gear #${gear.id} ---\n` +
-        `Teeth: ${gear.params.teeth}\n` +
-        `Pitch: ${gear.params.pitchDiameter.toFixed(1)}mm\n` +
-        `Module: ${gear.params.module}\n` +
-        `RPM: ${gear.rpm.toFixed(1)}\n` +
-        `Direction: ${directionText}\n` +
-        `Connected: ${gear.connectedTo ? gear.connectedTo.length : 0}`;
+
+      // Check if gear is in error state
+      if (gear.incompatibleWith) {
+        textColor = "#ffffff"; // White text on colored background
+
+        if (gear.overlapError) {
+          // Overlap error (gears too close)
+          errorState = "overlap";
+          text =
+            `--- Gear #${gear.id} ---\n` +
+            `!! OVERLAPPING !!\n` +
+            `\n` +
+            `Gears are too\n` +
+            `close together.\n` +
+            `\n` +
+            `Move gear away`;
+        } else if (gear.jammingError) {
+          // Jamming error (locked cycle)
+          errorState = "jamming";
+          text =
+            `--- Gear #${gear.id} ---\n` +
+            `!! JAMMING !!\n` +
+            `\n` +
+            `Locked gear cycle\n` +
+            `detected.\n` +
+            `\n` +
+            `Move gear away`;
+        } else {
+          // Module incompatibility
+          errorState = "incompatible";
+          const targetModule = gear.incompatibleWith.params?.module || "?";
+          text =
+            `--- Gear #${gear.id} ---\n` +
+            `!! INCOMPATIBLE !!\n` +
+            `Module: ${gear.params.module}\n` +
+            `Target: ${targetModule}\n` +
+            `\n` +
+            `Move gear away\n` +
+            `or change module`;
+        }
+      } else {
+        text =
+          `--- Gear #${gear.id} ---\n` +
+          `Teeth: ${gear.params.teeth}\n` +
+          `Pitch: ${gear.params.pitchDiameter.toFixed(1)}mm\n` +
+          `Module: ${gear.params.module}\n` +
+          `RPM: ${gear.rpm.toFixed(1)}\n` +
+          `Direction: ${directionText}\n` +
+          `Connected: ${gear.connectedTo ? gear.connectedTo.length : 0}`;
+      }
     } else {
       text = "Select a gear\nto view info";
+    }
+
+    // Update panel background color based on error state
+    const bgMesh = this.xrPanels.right?.getObjectByName("infoPanelBackground");
+    if (bgMesh && bgMesh.material) {
+      if (errorState === "overlap") {
+        bgMesh.material.color.setHex(0x4a148c); // Dark purple for overlap
+      } else if (errorState === "jamming") {
+        bgMesh.material.color.setHex(0x8b4500); // Dark orange for jamming
+      } else if (errorState === "incompatible") {
+        bgMesh.material.color.setHex(0x8b0000); // Dark red for incompatibility
+      } else {
+        bgMesh.material.color.setHex(0x0f3460); // Normal blue
+      }
     }
 
     // Dispose old texture to prevent memory leak
@@ -1635,7 +1712,7 @@ export class GearSimulator {
       160,
       150,
       "14px Arial",
-      "#e8e8e8",
+      textColor,
       true,
     );
     infoMesh.material.map = new THREE.CanvasTexture(canvas);
@@ -1859,7 +1936,8 @@ export class GearSimulator {
       const intersects = this.raycaster.intersectObjects(gearMeshes);
 
       this.gears.forEach((g) => {
-        if (g !== this.selectedGear) {
+        // Don't override emissive if gear is in incompatible state
+        if (g !== this.selectedGear && !g.incompatibleWith) {
           g.mesh.material.emissive.setHex(
             intersects.length > 0 && intersects[0].object === g.mesh
               ? 0x333333
@@ -1891,9 +1969,35 @@ export class GearSimulator {
       const currentDistance = movingGear.mesh.position.distanceTo(
         gear.mesh.position,
       );
+
+      // Check for overlap first (gears too close together)
+      if (this.checkGearsOverlap(movingGear, gear)) {
+        this.setOverlapState(movingGear, gear);
+        return false;
+      }
+
       const diff = Math.abs(currentDistance - idealDistance);
 
       if (diff < snapThreshold && diff > 0.1) {
+        // Check module compatibility before snapping
+        if (!this.areGearsCompatible(movingGear, gear)) {
+          // Incompatible gears - show visual feedback but don't snap
+          this.setIncompatibleState(movingGear, gear);
+          return false;
+        }
+
+        // Check if this connection would cause gear jamming (locked cycle)
+        if (this.wouldCauseJamming(movingGear, gear)) {
+          // Jamming - show visual feedback but don't snap
+          this.setJammingState(movingGear, gear);
+          return false;
+        }
+
+        // Clear any previous incompatible state
+        if (movingGear.incompatibleWith) {
+          this.clearIncompatibleState(movingGear);
+        }
+
         // Snap to ideal meshing distance
         const direction = new THREE.Vector3()
           .subVectors(movingGear.mesh.position, gear.mesh.position)
@@ -1913,6 +2017,398 @@ export class GearSimulator {
       }
     }
     return false; // No snap
+  }
+
+  areGearsCompatible(gear1, gear2) {
+    if (!gear1 || !gear2 || !gear1.params || !gear2.params) return false;
+    return Math.abs(gear1.params.module - gear2.params.module) < 0.001;
+  }
+
+  wouldCauseJamming(gear1, gear2) {
+    // Check if connecting gear1 to gear2 would create a cycle
+    // that causes rotation direction conflict (gear jamming)
+    //
+    // A cycle with odd number of meshings causes jamming because
+    // each meshing reverses rotation direction. Odd reversals = conflict.
+
+    if (!gear1 || !gear2) return false;
+
+    // If neither gear has connections, no cycle can be formed
+    const gear1HasConnections = gear1.connectedTo && gear1.connectedTo.length > 0;
+    const gear2HasConnections = gear2.connectedTo && gear2.connectedTo.length > 0;
+
+    if (!gear1HasConnections && !gear2HasConnections) return false;
+
+    // BFS to find if there's already a path between gear1 and gear2
+    // If there is, connecting them would create a cycle
+    const visited = new Set();
+    const queue = [{ gear: gear1, depth: 0 }];
+    visited.add(gear1);
+
+    while (queue.length > 0) {
+      const { gear, depth } = queue.shift();
+
+      for (const connected of gear.connectedTo || []) {
+        if (connected === gear2) {
+          // Found a path from gear1 to gear2
+          // Adding direct connection would create a cycle of length (depth + 2)
+          // depth = edges traversed, +1 for this final edge to gear2, +1 for new direct edge
+          const cycleLength = depth + 2;
+          if (cycleLength % 2 === 1) {
+            return true; // Odd cycle = jamming
+          }
+          // Even cycle is OK (like a square of 4 gears)
+          return false;
+        }
+
+        if (!visited.has(connected)) {
+          visited.add(connected);
+          queue.push({ gear: connected, depth: depth + 1 });
+        }
+      }
+    }
+
+    return false; // No cycle would be created
+  }
+
+  setJammingState(movingGear, targetGear) {
+    if (!movingGear || !movingGear.mesh || !movingGear.mesh.material) return;
+
+    // Store original color if not already stored
+    if (!movingGear.originalColor) {
+      movingGear.originalColor = movingGear.mesh.material.color.getHex();
+    }
+
+    // Set jamming reference (reuse incompatibleWith field)
+    movingGear.incompatibleWith = targetGear;
+    movingGear.jammingError = true; // Flag to distinguish from module incompatibility
+
+    // Change color to orange/yellow for jamming
+    movingGear.mesh.material.color.setHex(0xff9800);
+    movingGear.mesh.material.emissive.setHex(0x332200);
+
+    // Show jamming message
+    this.showJammingMessage(movingGear);
+
+    // Update XR info panel immediately if in XR mode and this gear is selected
+    if (this.isXRPresenting && movingGear === this.selectedGear) {
+      this.updateInfoPanelContent();
+    }
+  }
+
+  showJammingMessage(gear) {
+    if (this.isXRPresenting) {
+      this.showXRJammingMessage();
+    } else {
+      // Desktop message
+      const msgElement = document.getElementById("incompatibility-message");
+      if (msgElement) {
+        const textElement = msgElement.querySelector(".message-text");
+        if (textElement) {
+          textElement.textContent = `Gear jamming! This position creates a locked gear train cycle.`;
+        }
+        // Change background to orange for jamming
+        msgElement.style.background = "rgba(255, 152, 0, 0.95)";
+        msgElement.style.display = "flex";
+      }
+    }
+
+    this.debugLog(`JAMMING: Gear#${gear.id} creates locked cycle`);
+  }
+
+  checkGearsOverlap(gear1, gear2) {
+    // Check if two gears are overlapping (too close together)
+    // Overlap occurs when center distance is less than ideal meshing distance
+    if (!gear1 || !gear2 || !gear1.mesh || !gear2.mesh) return false;
+    if (!gear1.params || !gear2.params) return false;
+
+    const idealDistance =
+      (gear1.params.pitchDiameter + gear2.params.pitchDiameter) / 2;
+    const currentDistance = gear1.mesh.position.distanceTo(gear2.mesh.position);
+
+    // Overlap threshold: if closer than 90% of ideal distance, they're overlapping
+    const overlapThreshold = idealDistance * 0.9;
+
+    return currentDistance < overlapThreshold;
+  }
+
+  setOverlapState(movingGear, targetGear) {
+    if (!movingGear || !movingGear.mesh || !movingGear.mesh.material) return;
+
+    // Store original color if not already stored
+    if (!movingGear.originalColor) {
+      movingGear.originalColor = movingGear.mesh.material.color.getHex();
+    }
+
+    // Set overlap reference
+    movingGear.incompatibleWith = targetGear;
+    movingGear.overlapError = true; // Flag to distinguish from other errors
+
+    // Change color to purple for overlap
+    movingGear.mesh.material.color.setHex(0x9c27b0);
+    movingGear.mesh.material.emissive.setHex(0x220033);
+
+    // Show overlap message
+    this.showOverlapMessage(movingGear, targetGear);
+
+    // Update XR info panel immediately if in XR mode and this gear is selected
+    if (this.isXRPresenting && movingGear === this.selectedGear) {
+      this.updateInfoPanelContent();
+    }
+  }
+
+  showOverlapMessage(gear, targetGear) {
+    if (this.isXRPresenting) {
+      this.showXROverlapMessage();
+    } else {
+      // Desktop message
+      const msgElement = document.getElementById("incompatibility-message");
+      if (msgElement) {
+        const textElement = msgElement.querySelector(".message-text");
+        if (textElement) {
+          textElement.textContent = `Gears overlapping! Move gear further apart.`;
+        }
+        // Change background to purple for overlap
+        msgElement.style.background = "rgba(156, 39, 176, 0.95)";
+        msgElement.style.display = "flex";
+      }
+    }
+
+    this.debugLog(`OVERLAP: Gear#${gear.id} overlaps with Gear#${targetGear.id}`);
+  }
+
+  showXRJammingMessage() {
+    // Remove existing panel if any
+    this.hideXRIncompatibilityMessage();
+
+    const panel = new THREE.Group();
+    panel.name = "incompatibilityPanel";
+
+    // Panel background (orange)
+    const bgGeometry = new THREE.PlaneGeometry(0.5, 0.12);
+    const bgMaterial = new THREE.MeshBasicMaterial({
+      color: 0xff9800,
+      transparent: true,
+      opacity: 0.95,
+      side: THREE.DoubleSide,
+    });
+    const background = new THREE.Mesh(bgGeometry, bgMaterial);
+    panel.add(background);
+
+    // Warning text
+    const text = "Gear Jamming! Locked cycle";
+    const textCanvas = this.createTextCanvas(
+      text,
+      300,
+      40,
+      "16px Arial",
+      "#ffffff",
+    );
+    const textTexture = new THREE.CanvasTexture(textCanvas);
+    const textMaterial = new THREE.MeshBasicMaterial({
+      map: textTexture,
+      transparent: true,
+    });
+    const textMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.45, 0.06),
+      textMaterial,
+    );
+    textMesh.position.set(0, 0, 0.01);
+    panel.add(textMesh);
+
+    // Position in front of user
+    panel.position.set(0, 1.5, -0.8);
+
+    this.scene.add(panel);
+    this.xrPanels.incompatibility = panel;
+  }
+
+  showXROverlapMessage() {
+    // Remove existing panel if any
+    this.hideXRIncompatibilityMessage();
+
+    const panel = new THREE.Group();
+    panel.name = "incompatibilityPanel";
+
+    // Panel background (purple)
+    const bgGeometry = new THREE.PlaneGeometry(0.5, 0.12);
+    const bgMaterial = new THREE.MeshBasicMaterial({
+      color: 0x9c27b0,
+      transparent: true,
+      opacity: 0.95,
+      side: THREE.DoubleSide,
+    });
+    const background = new THREE.Mesh(bgGeometry, bgMaterial);
+    panel.add(background);
+
+    // Warning text
+    const text = "Gears Overlapping!";
+    const textCanvas = this.createTextCanvas(
+      text,
+      300,
+      40,
+      "16px Arial",
+      "#ffffff",
+    );
+    const textTexture = new THREE.CanvasTexture(textCanvas);
+    const textMaterial = new THREE.MeshBasicMaterial({
+      map: textTexture,
+      transparent: true,
+    });
+    const textMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.45, 0.06),
+      textMaterial,
+    );
+    textMesh.position.set(0, 0, 0.01);
+    panel.add(textMesh);
+
+    // Position in front of user
+    panel.position.set(0, 1.5, -0.8);
+
+    this.scene.add(panel);
+    this.xrPanels.incompatibility = panel;
+  }
+
+  setIncompatibleState(movingGear, targetGear) {
+    if (!movingGear || !movingGear.mesh || !movingGear.mesh.material) return;
+
+    // Store original color if not already stored
+    if (!movingGear.originalColor) {
+      movingGear.originalColor = movingGear.mesh.material.color.getHex();
+    }
+
+    // Set incompatible reference
+    movingGear.incompatibleWith = targetGear;
+
+    // Change color to red
+    movingGear.mesh.material.color.setHex(0xf44336);
+    movingGear.mesh.material.emissive.setHex(0x330000);
+
+    // Show incompatibility message
+    this.showIncompatibilityMessage(movingGear, targetGear);
+
+    // Update XR info panel immediately if in XR mode and this gear is selected
+    if (this.isXRPresenting && movingGear === this.selectedGear) {
+      this.updateInfoPanelContent();
+    }
+  }
+
+  clearIncompatibleState(gear) {
+    if (!gear || !gear.incompatibleWith) return;
+
+    const wasSelected = gear === this.selectedGear;
+
+    // Restore original color
+    if (gear.originalColor && gear.mesh && gear.mesh.material) {
+      gear.mesh.material.color.setHex(gear.originalColor);
+      // Respect selection state for emissive
+      if (wasSelected) {
+        gear.mesh.material.emissive.setHex(0x00aa00);
+      } else {
+        gear.mesh.material.emissive.setHex(0x000000);
+      }
+    }
+
+    // Clear incompatible/jamming/overlap references
+    gear.incompatibleWith = null;
+    gear.originalColor = null;
+    gear.jammingError = false;
+    gear.overlapError = false;
+
+    // Hide incompatibility message
+    this.hideIncompatibilityMessage();
+
+    // Update XR info panel immediately if in XR mode and this gear was selected
+    if (this.isXRPresenting && wasSelected) {
+      this.updateInfoPanelContent();
+    }
+  }
+
+  showIncompatibilityMessage(movingGear, targetGear) {
+    const movingModule = movingGear.params.module;
+    const targetModule = targetGear.params.module;
+
+    if (this.isXRPresenting) {
+      this.showXRIncompatibilityMessage(movingModule, targetModule);
+    } else {
+      // Desktop message
+      const msgElement = document.getElementById("incompatibility-message");
+      if (msgElement) {
+        const textElement = msgElement.querySelector(".message-text");
+        if (textElement) {
+          textElement.textContent = `Gears incompatible: Module ${movingModule} cannot mesh with Module ${targetModule}`;
+        }
+        msgElement.style.display = "flex";
+      }
+    }
+
+    this.debugLog(`INCOMPATIBLE: M${movingModule} vs M${targetModule}`);
+  }
+
+  hideIncompatibilityMessage() {
+    if (this.isXRPresenting) {
+      this.hideXRIncompatibilityMessage();
+    } else {
+      const msgElement = document.getElementById("incompatibility-message");
+      if (msgElement) {
+        msgElement.style.display = "none";
+        // Reset background color to default (red for module incompatibility)
+        msgElement.style.background = "rgba(244, 67, 54, 0.95)";
+      }
+    }
+  }
+
+  showXRIncompatibilityMessage(movingModule, targetModule) {
+    // Remove existing panel if any
+    this.hideXRIncompatibilityMessage();
+
+    const panel = new THREE.Group();
+    panel.name = "incompatibilityPanel";
+
+    // Panel background (red)
+    const bgGeometry = new THREE.PlaneGeometry(0.5, 0.12);
+    const bgMaterial = new THREE.MeshBasicMaterial({
+      color: 0xf44336,
+      transparent: true,
+      opacity: 0.95,
+      side: THREE.DoubleSide,
+    });
+    const background = new THREE.Mesh(bgGeometry, bgMaterial);
+    panel.add(background);
+
+    // Warning text
+    const text = `Module ${movingModule} \u2260 Module ${targetModule}`;
+    const textCanvas = this.createTextCanvas(
+      text,
+      300,
+      40,
+      "16px Arial",
+      "#ffffff",
+    );
+    const textTexture = new THREE.CanvasTexture(textCanvas);
+    const textMaterial = new THREE.MeshBasicMaterial({
+      map: textTexture,
+      transparent: true,
+    });
+    const textMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.45, 0.06),
+      textMaterial,
+    );
+    textMesh.position.set(0, 0, 0.01);
+    panel.add(textMesh);
+
+    // Position in front of user
+    panel.position.set(0, 1.5, -0.8);
+
+    this.scene.add(panel);
+    this.xrPanels.incompatibility = panel;
+  }
+
+  hideXRIncompatibilityMessage() {
+    if (this.xrPanels.incompatibility) {
+      this.scene.remove(this.xrPanels.incompatibility);
+      this.xrPanels.incompatibility = null;
+    }
   }
 
   connectGears(gear1, gear2) {
@@ -1937,11 +2433,46 @@ export class GearSimulator {
   updateConnections() {
     // Recalculate connections based on current positions
     const meshThreshold = 3;
+    const incompatibleClearThreshold = 10; // Clear incompatible state when moved away
+
+    // Clear ALL jamming and overlap errors first - they will be re-detected if still applicable
+    // (Keep module incompatibility errors as they're position-independent)
+    for (const gear of this.gears) {
+      if (gear && gear.incompatibleWith && (gear.jammingError || gear.overlapError)) {
+        this.clearIncompatibleState(gear);
+      }
+    }
+
+    // Check if any gear in module-incompatible state has moved away from target
+    for (const gear of this.gears) {
+      if (gear && gear.incompatibleWith && !gear.jammingError && !gear.overlapError) {
+        const targetGear = gear.incompatibleWith;
+        if (!targetGear || !targetGear.mesh) {
+          // Target gear no longer exists
+          this.clearIncompatibleState(gear);
+          continue;
+        }
+
+        const idealDistance =
+          (gear.params.pitchDiameter + targetGear.params.pitchDiameter) / 2;
+        const currentDistance = gear.mesh.position.distanceTo(
+          targetGear.mesh.position,
+        );
+        const diff = Math.abs(currentDistance - idealDistance);
+
+        // If moved away from meshing distance, clear incompatible state
+        if (diff > incompatibleClearThreshold) {
+          this.clearIncompatibleState(gear);
+        }
+      }
+    }
 
     for (const gear of this.gears) {
       if (gear) gear.connectedTo = [];
     }
 
+    // Collect all potential connections first
+    const potentialConnections = [];
     for (let i = 0; i < this.gears.length; i++) {
       for (let j = i + 1; j < this.gears.length; j++) {
         const gear1 = this.gears[i];
@@ -1959,16 +2490,100 @@ export class GearSimulator {
         );
 
         if (Math.abs(currentDistance - idealDistance) < meshThreshold) {
-          this.connectGears(gear1, gear2);
+          potentialConnections.push({ gear1, gear2, distance: currentDistance });
         }
       }
+    }
+
+    // Sort by distance (closest first) for consistent connection order
+    potentialConnections.sort((a, b) => a.distance - b.distance);
+
+    // Check for overlapping gears first
+    let overlapGear = null;
+    let overlapTarget = null;
+    for (let i = 0; i < this.gears.length; i++) {
+      for (let j = i + 1; j < this.gears.length; j++) {
+        const gear1 = this.gears[i];
+        const gear2 = this.gears[j];
+        if (!gear1 || !gear2) continue;
+
+        if (this.checkGearsOverlap(gear1, gear2)) {
+          if (!overlapGear) {
+            overlapGear = gear1;
+            overlapTarget = gear2;
+          }
+        }
+      }
+    }
+
+    // Try to make connections, checking for compatibility and jamming
+    let jammingGear = null;
+    let jammingTarget = null;
+
+    for (const { gear1, gear2 } of potentialConnections) {
+      // Skip if either gear is overlapping
+      if (this.checkGearsOverlap(gear1, gear2)) {
+        continue;
+      }
+
+      // Check module compatibility
+      if (!this.areGearsCompatible(gear1, gear2)) {
+        continue;
+      }
+
+      // Check if this connection would cause jamming
+      if (this.wouldCauseJamming(gear1, gear2)) {
+        // Record the jamming pair
+        if (!jammingGear) {
+          jammingGear = gear1;
+          jammingTarget = gear2;
+        }
+        continue; // Don't make this connection
+      }
+
+      // Safe to connect
+      this.connectGears(gear1, gear2);
+    }
+
+    // Show overlap error if detected (priority over jamming)
+    if (overlapGear && overlapTarget) {
+      let errorGear, otherGear;
+      if (this.selectedGear === overlapGear) {
+        errorGear = overlapGear;
+        otherGear = overlapTarget;
+      } else if (this.selectedGear === overlapTarget) {
+        errorGear = overlapTarget;
+        otherGear = overlapGear;
+      } else {
+        errorGear = overlapGear;
+        otherGear = overlapTarget;
+      }
+      this.setOverlapState(errorGear, otherGear);
+    }
+    // If no overlap but jamming was detected, show jamming error
+    else if (jammingGear && jammingTarget) {
+      let errorGear, otherGear;
+      if (this.selectedGear === jammingGear) {
+        errorGear = jammingGear;
+        otherGear = jammingTarget;
+      } else if (this.selectedGear === jammingTarget) {
+        errorGear = jammingTarget;
+        otherGear = jammingGear;
+      } else {
+        errorGear = jammingGear;
+        otherGear = jammingTarget;
+      }
+      this.setJammingState(errorGear, otherGear);
     }
   }
 
   selectGear(gear) {
     // Deselect previous
     if (this.selectedGear) {
-      this.selectedGear.mesh.material.emissive.setHex(0x000000);
+      // Only reset emissive if not in incompatible state
+      if (!this.selectedGear.incompatibleWith) {
+        this.selectedGear.mesh.material.emissive.setHex(0x000000);
+      }
       if (this.selectedGear.pitchCircle) {
         this.selectedGear.pitchCircle.material.color.setHex(0x00ff00);
       }
@@ -1977,7 +2592,10 @@ export class GearSimulator {
     this.selectedGear = gear;
 
     if (gear) {
-      gear.mesh.material.emissive.setHex(0x00aa00);
+      // Only set selection emissive if not in incompatible state
+      if (!gear.incompatibleWith) {
+        gear.mesh.material.emissive.setHex(0x00aa00);
+      }
       if (gear.pitchCircle) {
         gear.pitchCircle.material.color.setHex(0xffff00);
       }
@@ -1995,8 +2613,11 @@ export class GearSimulator {
       gear.params.pressureAngle;
     document.getElementById("param-thickness").value = gear.params.thickness;
     document.getElementById("param-bore").value = gear.params.boreDiameter;
-    document.getElementById("param-color").value =
-      "#" + gear.mesh.material.color.getHexString();
+    // Show original color if in incompatible state, otherwise show current color
+    const colorHex = gear.originalColor
+      ? gear.originalColor.toString(16).padStart(6, "0")
+      : gear.mesh.material.color.getHexString();
+    document.getElementById("param-color").value = "#" + colorHex;
   }
 
   updatePositionInputs() {
@@ -2150,6 +2771,10 @@ export class GearSimulator {
       isDriver: this.gears.length === 0,
       pitchCircle: null,
       centerMarker: null,
+      incompatibleWith: null,
+      originalColor: null,
+      jammingError: false,
+      overlapError: false,
     };
 
     // Store gear ID on mesh for raycasting identification
@@ -2188,20 +2813,35 @@ export class GearSimulator {
       return;
     }
 
-    // Remove from connected gears
+    const gearToDelete = this.selectedGear;
+
+    // Clear incompatibility states referencing this gear
     for (const gear of this.gears) {
-      gear.connectedTo = gear.connectedTo.filter(
-        (g) => g !== this.selectedGear,
-      );
+      if (gear.incompatibleWith === gearToDelete) {
+        this.clearIncompatibleState(gear);
+      }
     }
 
-    this.worldGroup.remove(this.selectedGear.mesh);
-    this.gears = this.gears.filter((g) => g !== this.selectedGear);
+    // Clear own incompatibility state if any
+    if (gearToDelete.incompatibleWith) {
+      this.clearIncompatibleState(gearToDelete);
+    }
+
+    // Remove from connected gears
+    for (const gear of this.gears) {
+      gear.connectedTo = gear.connectedTo.filter((g) => g !== gearToDelete);
+    }
+
+    this.worldGroup.remove(gearToDelete.mesh);
+    this.gears = this.gears.filter((g) => g !== gearToDelete);
     this.selectedGear = null;
     this.updateGearInfo();
   }
 
   resetScene() {
+    // Hide any incompatibility message
+    this.hideIncompatibilityMessage();
+
     for (const gear of this.gears) {
       this.worldGroup.remove(gear.mesh);
     }
@@ -2212,6 +2852,16 @@ export class GearSimulator {
   }
 
   play() {
+    // Check if any gear has jamming error
+    const jammingGear = this.gears.find(g => g.jammingError);
+    if (jammingGear) {
+      this.showJammingMessage();
+      if (this.xrSession) {
+        this.showXRJammingMessage();
+      }
+      return;
+    }
+
     this.isPlaying = true;
     this.calculateGearSpeeds();
   }
