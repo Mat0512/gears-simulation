@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { VRButton } from "three/addons/webxr/VRButton.js";
+import { XRButton } from "three/addons/webxr/XRButton.js";
 import { XRControllerModelFactory } from "three/addons/webxr/XRControllerModelFactory.js";
 import { OculusHandModel } from "three/addons/webxr/OculusHandModel.js";
 import { GearGeometry } from "./GearGeometry.js";
@@ -181,9 +181,12 @@ export class GearSimulator {
   }
 
   setupWebXR() {
-    // Add VR button to DOM
-    const vrButton = VRButton.createButton(this.renderer);
-    document.body.appendChild(vrButton);
+    // Add XR button to DOM
+    const xrButton = XRButton.createButton(this.renderer, {
+      mode: "immersive-vr",
+      requiredFeatures: ["hand-tracking"],
+    });
+    document.body.appendChild(xrButton);
 
     // Setup controllers and hands
     this.setupControllers();
@@ -294,6 +297,16 @@ export class GearSimulator {
     this.originalBackground = this.scene.background;
     this.scene.background = null;
 
+    // Boost lighting for XR mode
+    if (this.ambientLight) {
+      this.originalAmbientIntensity = this.ambientLight.intensity;
+      this.ambientLight.intensity = 2.0;
+    }
+    if (this.directionalLight) {
+      this.originalDirectionalIntensity = this.directionalLight.intensity;
+      this.directionalLight.intensity = 1.5;
+    }
+
     // Hide HTML panels
     const controlsPanel = document.getElementById("controls-panel");
     const infoPanel = document.getElementById("info-panel");
@@ -328,6 +341,14 @@ export class GearSimulator {
     // Restore original background
     if (this.originalBackground !== undefined) {
       this.scene.background = this.originalBackground;
+    }
+
+    // Restore original lighting
+    if (this.ambientLight && this.originalAmbientIntensity !== undefined) {
+      this.ambientLight.intensity = this.originalAmbientIntensity;
+    }
+    if (this.directionalLight && this.originalDirectionalIntensity !== undefined) {
+      this.directionalLight.intensity = this.originalDirectionalIntensity;
     }
 
     // Show HTML panels
@@ -1756,11 +1777,11 @@ export class GearSimulator {
 
   createLights() {
     // Ambient light
-    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+    this.ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
     this.scene.add(this.ambientLight);
 
     // Main directional light
-    this.directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    this.directionalLight = new THREE.DirectionalLight(0xffffff, 2.2);
     this.directionalLight.position.set(50, 50, 100);
     this.directionalLight.castShadow = true;
     this.directionalLight.shadow.mapSize.width = 2048;
