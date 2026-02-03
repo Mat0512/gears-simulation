@@ -100,6 +100,10 @@ export class GearSimulator {
     this.sounds = {
       playGear: null,
       placeGear: null,
+      incompatibleGear: null,
+      introductionGear: null,
+      jammedGear: null,
+      overlappingGear: null,
     };
     this.initAudio();
 
@@ -110,10 +114,18 @@ export class GearSimulator {
     // Load sound effects
     this.sounds.playGear = new Audio("/public/play-gear.mp3");
     this.sounds.placeGear = new Audio("/public/place-gear.mp3");
+    this.sounds.incompatibleGear = new Audio("/public/incompatible-gear.mp3");
+    this.sounds.introductionGear = new Audio("/public/introduction-gear.mp3");
+    this.sounds.jammedGear = new Audio("/public/jammed-gear.mp3");
+    this.sounds.overlappingGear = new Audio("/public/overlapping-gear.mp3");
 
     // Preload audio
     this.sounds.playGear.load();
     this.sounds.placeGear.load();
+    this.sounds.incompatibleGear.load();
+    this.sounds.introductionGear.load();
+    this.sounds.jammedGear.load();
+    this.sounds.overlappingGear.load();
   }
 
   playSound(soundName) {
@@ -292,6 +304,9 @@ export class GearSimulator {
   onXRSessionStart() {
     this.isXRPresenting = true;
     document.body.classList.add("xr-presenting");
+
+    // Play introduction sound when entering WebXR
+    this.playSound("introductionGear");
 
     // Store original background and make transparent for passthrough
     this.originalBackground = this.scene.background;
@@ -2157,6 +2172,9 @@ export class GearSimulator {
   }
 
   showJammingMessage(gear) {
+    // Play jammed gear sound
+    this.playSound("jammedGear");
+
     if (this.isXRPresenting) {
       this.showXRJammingMessage();
     } else {
@@ -2218,6 +2236,9 @@ export class GearSimulator {
   }
 
   showOverlapMessage(gear, targetGear) {
+    // Play overlapping gear sound
+    this.playSound("overlappingGear");
+
     if (this.isXRPresenting) {
       this.showXROverlapMessage();
     } else {
@@ -2387,6 +2408,9 @@ export class GearSimulator {
   showIncompatibilityMessage(movingGear, targetGear) {
     const movingModule = movingGear.params.module;
     const targetModule = targetGear.params.module;
+
+    // Play incompatible gear sound
+    this.playSound("incompatibleGear");
 
     if (this.isXRPresenting) {
       this.showXRIncompatibilityMessage(movingModule, targetModule);
