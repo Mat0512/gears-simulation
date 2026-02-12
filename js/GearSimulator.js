@@ -76,6 +76,9 @@ export class GearSimulator {
       incompatibility: null,
     };
 
+    // Quiz mode (set externally by main.js)
+    this.quizMode = null;
+
     // Debug log buffer for VR panel
     this.debugLogs = [];
     this.maxDebugLogs = 8;
@@ -344,6 +347,11 @@ export class GearSimulator {
       this.orbitControls.enabled = false;
     }
 
+    // Initialize quiz mode if active
+    if (this.quizMode) {
+      this.quizMode.init();
+    }
+
     // Log XR session start
     this.debugLog("XR Session Started");
     this.debugLog(`Gears in scene: ${this.gears.length}`);
@@ -378,6 +386,11 @@ export class GearSimulator {
 
     // Remove 3D UI panels
     this.removeXRPanels();
+
+    // Cleanup quiz panels
+    if (this.quizMode) {
+      this.quizMode.removeQuizPanels();
+    }
 
     // Re-enable orbit controls
     if (this.orbitControls) {
@@ -866,7 +879,7 @@ export class GearSimulator {
   // ==================== XR UI BUTTON INTERACTION ====================
 
   checkXRButtonPress(origin, direction, handedness) {
-    if (!this.xrPanels.left && !this.xrPanels.right && !this.xrPanels.top)
+    if (!this.xrPanels.left && !this.xrPanels.right && !this.xrPanels.top && !this.quizMode)
       return;
 
     this.xrRaycaster.set(origin, direction);
@@ -884,6 +897,11 @@ export class GearSimulator {
     collectButtons(this.xrPanels.left);
     collectButtons(this.xrPanels.right);
     collectButtons(this.xrPanels.top);
+
+    // Include quiz mode buttons
+    if (this.quizMode) {
+      this.quizMode.collectButtons(buttons);
+    }
 
     const intersects = this.xrRaycaster.intersectObjects(buttons);
 
@@ -1652,6 +1670,11 @@ export class GearSimulator {
     // Update controls panel parameter displays
     if (this.xrPanels.left) {
       this.updateXRControlsPanel();
+    }
+
+    // Update quiz panels
+    if (this.quizMode) {
+      this.quizMode.updateUI();
     }
   }
 
