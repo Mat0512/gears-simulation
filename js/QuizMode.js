@@ -816,8 +816,7 @@ export class QuizMode {
       // console.log(targetRatio)
       // const targetRatio = parseFloat(target.gearRatio);
 
-      const str = "3:1";
-      const [a, b] = str.split(":").map(Number); // split by ":" and convert to numbers
+      const [a, b] = target.gearRatio.split(":").map(Number);
       const targetRatio = a / b;
       checks.push(Math.abs(props.overallGearRatio - targetRatio) < 0.1);
     }
