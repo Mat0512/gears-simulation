@@ -10,6 +10,10 @@ const urlParams = new URLSearchParams(window.location.search);
 const userId = urlParams.get('user_id');
 const examId = urlParams.get('exam_id');
 
+console.log("user_id: ", userId)
+console.log("exam_id: ", examId)
+
+
 if (userId && examId) {
   // Quiz mode — QuizMode controls the scene
   simulator.quizMode = new QuizMode(simulator, userId, examId);

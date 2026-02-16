@@ -27,7 +27,6 @@ export class QuizMode {
     this.panels = {
       start: null,
       quiz: null,
-      feedback: null,
       results: null,
       error: null,
     };
@@ -57,6 +56,7 @@ export class QuizMode {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
 
+    console.log("fetching")
     try {
       const res = await fetch(
         `${BASE_URL}/questions/exam/${this.examId}`,
@@ -192,7 +192,7 @@ export class QuizMode {
 
     // Background
     const bg = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.7, 0.35),
+      new THREE.PlaneGeometry(0.7, 0.45),
       new THREE.MeshBasicMaterial({
         color: 0x0f3460,
         transparent: true,
@@ -208,7 +208,7 @@ export class QuizMode {
       300, 30, "bold 16px Arial", "#4a90d9"
     );
     const counterMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.45, 0.04),
+      new THREE.PlaneGeometry(0.45, 0.043),
       new THREE.MeshBasicMaterial({
         map: new THREE.CanvasTexture(counterCanvas),
         transparent: true,
@@ -281,11 +281,40 @@ export class QuizMode {
 
     // Submit button
     const submitBtn = this.simulator.create3DButton(
-      0.22, 0.055, "Submit Answer", 0x27ae60, () => this.submitAnswer()
+      0.32, 0.055, "Submit Answer", 0x27ae60, () => this.submitAnswer()
     );
     submitBtn.name = "submitButton";
     submitBtn.position.set(0, -0.13, 0.01);
     panel.add(submitBtn);
+
+    // Feedback indicator (hidden by default, shown after submit)
+    const feedbackCanvas = this.simulator.createTextCanvas(
+      "", 300, 40, "bold 18px Arial", "#ffffff"
+    );
+    const feedbackBg = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.6, 0.06),
+      new THREE.MeshBasicMaterial({
+        color: 0x0f3460,
+        transparent: true,
+        opacity: 0,
+        side: THREE.DoubleSide,
+      })
+    );
+    feedbackBg.name = "feedbackBg";
+    feedbackBg.position.set(0, -0.2, 0.01);
+    panel.add(feedbackBg);
+
+    const feedbackMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.5, 0.05),
+      new THREE.MeshBasicMaterial({
+        map: new THREE.CanvasTexture(feedbackCanvas),
+        transparent: true,
+      })
+    );
+    feedbackMesh.name = "feedbackText";
+    feedbackMesh.position.set(0, -0.2, 0.015);
+    feedbackMesh.visible = false;
+    panel.add(feedbackMesh);
 
     panel.position.set(0.75, 1.8, -0.6);
     panel.rotation.y = -Math.PI / 16;
@@ -294,48 +323,48 @@ export class QuizMode {
   }
 
   createFeedbackPanel(isCorrect) {
-    this.removePanel("feedback");
-
-    const panel = new THREE.Group();
-    panel.name = "quizFeedbackPanel";
+    if (!this.panels.quiz) return;
 
     const color = isCorrect ? 0x27ae60 : 0xf44336;
     const text = isCorrect ? "Correct!" : "Incorrect";
 
-    // Background
-    const bg = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.4, 0.12),
-      new THREE.MeshBasicMaterial({
-        color: color,
-        transparent: true,
-        opacity: 0.95,
-        side: THREE.DoubleSide,
-      })
-    );
-    panel.add(bg);
+    // Update feedback background color and show it
+    const feedbackBg = this.panels.quiz.getObjectByName("feedbackBg");
+    if (feedbackBg) {
+      feedbackBg.material.color.setHex(color);
+      feedbackBg.material.opacity = 0.95;
+    }
 
-    // Text
-    const textCanvas = this.simulator.createTextCanvas(
-      text, 250, 40, "bold 20px Arial", "#ffffff"
-    );
-    const textMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.35, 0.07),
-      new THREE.MeshBasicMaterial({
-        map: new THREE.CanvasTexture(textCanvas),
-        transparent: true,
-      })
-    );
-    textMesh.position.set(0, 0, 0.01);
-    panel.add(textMesh);
+    // Update feedback text and show it
+    const feedbackMesh = this.panels.quiz.getObjectByName("feedbackText");
+    if (feedbackMesh) {
+      if (feedbackMesh.material.map) feedbackMesh.material.map.dispose();
+      const canvas = this.simulator.createTextCanvas(
+        text, 300, 40, "bold 18px Arial", "#ffffff"
+      );
+      feedbackMesh.material.map = new THREE.CanvasTexture(canvas);
+      feedbackMesh.material.map.needsUpdate = true;
+      feedbackMesh.visible = true;
+    }
 
-    panel.position.set(0, 1.45, -0.7);
-    this.simulator.scene.add(panel);
-    this.panels.feedback = panel;
-
-    // Auto-remove after 1.5 seconds
+    // Auto-hide after 1.5 seconds
     setTimeout(() => {
-      this.removePanel("feedback");
+      this.hideFeedback();
     }, 1500);
+  }
+
+  hideFeedback() {
+    if (!this.panels.quiz) return;
+
+    const feedbackBg = this.panels.quiz.getObjectByName("feedbackBg");
+    if (feedbackBg) {
+      feedbackBg.material.opacity = 0;
+    }
+
+    const feedbackMesh = this.panels.quiz.getObjectByName("feedbackText");
+    if (feedbackMesh) {
+      feedbackMesh.visible = false;
+    }
   }
 
   createResultsPanel() {
@@ -661,6 +690,9 @@ export class QuizMode {
 
   loadQuestion(index) {
     this.currentQuestionIndex = index;
+
+    // Hide any previous feedback
+    this.hideFeedback();
 
     // Reset scene and add one driver gear
     this.simulator.resetScene();

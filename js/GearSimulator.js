@@ -957,7 +957,7 @@ export class GearSimulator {
       this.scene.remove(this.xrPanels.debug);
       this.xrPanels.debug = null;
     }
-    // Clear debug logs when exiting XR
+    // Clear debug logs when exitingfXR
     this.debugLogs = [];
   }
 
@@ -966,7 +966,7 @@ export class GearSimulator {
     panel.name = "controlsPanel";
 
     // Panel background (taller to accommodate new controls)
-    const bgGeometry = new THREE.PlaneGeometry(0.55, 1.3);
+    const bgGeometry = new THREE.PlaneGeometry(0.65, 1.3);
     const bgMaterial = new THREE.MeshBasicMaterial({
       color: 0x0f3460,
       transparent: true,
@@ -1109,6 +1109,7 @@ export class GearSimulator {
       },
       1,
       1000,
+      1,
       10,
     );
     rpmControl.position.set(0, yPos, 0.01);
@@ -1137,7 +1138,7 @@ export class GearSimulator {
 
     // Teeth control
     yPos -= rowSpacing;
-    const teethControl = this.createParamControl("Teeth", "teeth", 8, 100, 1);
+    const teethControl = this.createParamControl("Teeth", "teeth", 8, 100, 1, 10);
     teethControl.position.set(0, yPos, 0.01);
     panel.add(teethControl);
 
@@ -1190,13 +1191,13 @@ export class GearSimulator {
     panel.add(boreControl);
 
     // Position panel to the left of user
-    panel.position.set(-0.8, 1.2, -0.5);
+    panel.position.set(-1, 1.2, -0.5);
     panel.rotation.y = Math.PI / 6; // 30 degrees
 
     return panel;
   }
 
-  createValueControl(name, getValue, setValue, min, max, step) {
+  createValueControl(name, getValue, setValue, min, max, step, bigStep) {
     const group = new THREE.Group();
     group.name = `${name}Control`;
 
@@ -1221,28 +1222,62 @@ export class GearSimulator {
     valueMesh.name = `${name}Value`;
     group.add(valueMesh);
 
-    // Decrement button
-    const decBtn = this.create3DButton(0.08, 0.045, "-", 0x666666, () => {
-      const newVal = Math.max(min, getValue() - step);
-      setValue(newVal);
-      this.updateValueDisplay(valueMesh, newVal);
-    });
-    decBtn.position.set(-0.15, 0, 0.01);
-    group.add(decBtn);
+    if (bigStep) {
+      // Layout with big step buttons: -10, -1, [value], +1, +10
+      const decBigBtn = this.create3DButton(0.055, 0.045, `-${bigStep}`, 0x555555, () => {
+        const newVal = Math.max(min, getValue() - bigStep);
+        setValue(newVal);
+        this.updateValueDisplay(valueMesh, newVal);
+      });
+      decBigBtn.position.set(-0.19, 0, 0.01);
+      group.add(decBigBtn);
 
-    // Increment button
-    const incBtn = this.create3DButton(0.08, 0.045, "+", 0x666666, () => {
-      const newVal = Math.min(max, getValue() + step);
-      setValue(newVal);
-      this.updateValueDisplay(valueMesh, newVal);
-    });
-    incBtn.position.set(0.15, 0, 0.01);
-    group.add(incBtn);
+      const decBtn = this.create3DButton(0.045, 0.045, `-${step}`, 0x666666, () => {
+        const newVal = Math.max(min, getValue() - step);
+        setValue(newVal);
+        this.updateValueDisplay(valueMesh, newVal);
+      });
+      decBtn.position.set(-0.12, 0, 0.01);
+      group.add(decBtn);
+
+      const incBtn = this.create3DButton(0.045, 0.045, `+${step}`, 0x666666, () => {
+        const newVal = Math.min(max, getValue() + step);
+        setValue(newVal);
+        this.updateValueDisplay(valueMesh, newVal);
+      });
+      incBtn.position.set(0.12, 0, 0.01);
+      group.add(incBtn);
+
+      const incBigBtn = this.create3DButton(0.055, 0.045, `+${bigStep}`, 0x555555, () => {
+        const newVal = Math.min(max, getValue() + bigStep);
+        setValue(newVal);
+        this.updateValueDisplay(valueMesh, newVal);
+      });
+      incBigBtn.position.set(0.19, 0, 0.01);
+      group.add(incBigBtn);
+    } else {
+      // Default layout: -, +
+      const decBtn = this.create3DButton(0.08, 0.045, "-", 0x666666, () => {
+        const newVal = Math.max(min, getValue() - step);
+        setValue(newVal);
+        this.updateValueDisplay(valueMesh, newVal);
+      });
+      decBtn.position.set(-0.15, 0, 0.01);
+      group.add(decBtn);
+
+      const incBtn = this.create3DButton(0.08, 0.045, "+", 0x666666, () => {
+        const newVal = Math.min(max, getValue() + step);
+        setValue(newVal);
+        this.updateValueDisplay(valueMesh, newVal);
+      });
+      incBtn.position.set(0.15, 0, 0.01);
+      group.add(incBtn);
+    }
 
     return group;
   }
 
-  createParamControl(label, paramName, min, max, step) {
+  createParamControl(label, paramName, min, max, step, bigStep) {
     const group = new THREE.Group();
     group.name = `${paramName}Control`;
 
@@ -1297,19 +1332,45 @@ export class GearSimulator {
     valueMesh.name = `${paramName}Value`;
     group.add(valueMesh);
 
-    // Decrement button
-    const decBtn = this.create3DButton(0.06, 0.04, "-", 0x555555, () => {
-      this.adjustGearParam(paramName, -step, min, max, valueMesh);
-    });
-    decBtn.position.set(0.14, 0, 0.01);
-    group.add(decBtn);
+    if (bigStep) {
+      // Layout with big step buttons: -10, -1, [value], +1, +10
+      const decBigBtn = this.create3DButton(0.05, 0.04, `-${bigStep}`, 0x444444, () => {
+        this.adjustGearParam(paramName, -bigStep, min, max, valueMesh);
+      });
+      decBigBtn.position.set(0.10, 0, 0.01);
+      group.add(decBigBtn);
 
-    // Increment button
-    const incBtn = this.create3DButton(0.06, 0.04, "+", 0x555555, () => {
-      this.adjustGearParam(paramName, step, min, max, valueMesh);
-    });
-    incBtn.position.set(0.22, 0, 0.01);
-    group.add(incBtn);
+      const decBtn = this.create3DButton(0.04, 0.04, `-${step}`, 0x555555, () => {
+        this.adjustGearParam(paramName, -step, min, max, valueMesh);
+      });
+      decBtn.position.set(0.16, 0, 0.01);
+      group.add(decBtn);
+
+      const incBtn = this.create3DButton(0.04, 0.04, `+${step}`, 0x555555, () => {
+        this.adjustGearParam(paramName, step, min, max, valueMesh);
+      });
+      incBtn.position.set(0.22, 0, 0.01);
+      group.add(incBtn);
+
+      const incBigBtn = this.create3DButton(0.05, 0.04, `+${bigStep}`, 0x444444, () => {
+        this.adjustGearParam(paramName, bigStep, min, max, valueMesh);
+      });
+      incBigBtn.position.set(0.28, 0, 0.01);
+      group.add(incBigBtn);
+    } else {
+      // Default layout: -, +
+      const decBtn = this.create3DButton(0.06, 0.04, "-", 0x555555, () => {
+        this.adjustGearParam(paramName, -step, min, max, valueMesh);
+      });
+      decBtn.position.set(0.14, 0, 0.01);
+      group.add(decBtn);
+
+      const incBtn = this.create3DButton(0.06, 0.04, "+", 0x555555, () => {
+        this.adjustGearParam(paramName, step, min, max, valueMesh);
+      });
+      incBtn.position.set(0.22, 0, 0.01);
+      group.add(incBtn);
+    }
 
     return group;
   }
@@ -1431,7 +1492,7 @@ export class GearSimulator {
 
     // Position panel to the right of user
     panel.position.set(0.8, 1.2, -0.5);
-    panel.rotation.y = -Math.PI / 6; // -30 degrees
+    panel.rotation.y = -Math.PI / 8; // -30 degrees
 
     return panel;
   }
@@ -1470,9 +1531,9 @@ export class GearSimulator {
     resetBtn.position.set(0.2, 0, 0.01);
     panel.add(resetBtn);
 
-    // Position panel above and in front of user
-    panel.position.set(0, 1.8, -0.6);
-    panel.rotation.x = -Math.PI / 12; // -15 degrees (tilted toward user)
+    // Position panel below, in front of user
+    panel.position.set(0, 0.7, -0.5);
+    panel.rotation.x = - Math.PI / 8; // tilted up toward user
 
     return panel;
   }
