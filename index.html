@@ -3,6 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Inline empty icon: a page that declares none makes the browser
+         request /favicon.ico at the WEB ROOT, which this module does not own
+         and which 404s. A data: URI satisfies it without shipping a file or
+         referencing anything outside the module slug. -->
+    <link rel="icon" href="data:,">
     <title>Gear Simulator</title>
     <link rel="stylesheet" href="css/style.css">
 </head>

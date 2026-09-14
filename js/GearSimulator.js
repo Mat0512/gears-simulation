@@ -4,6 +4,17 @@ import { XRButton } from "three/addons/webxr/XRButton.js";
 import { XRControllerModelFactory } from "three/addons/webxr/XRControllerModelFactory.js";
 import { OculusHandModel } from "three/addons/webxr/OculusHandModel.js";
 import { GearGeometry } from "./GearGeometry.js";
+import { asset } from './assetPath.js';
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
+        // Hand meshes are VENDORED into public/, not fetched from jsDelivr.
+        // three.js defaults this path to cdn.jsdelivr.net and downloads the
+        // meshes every session; on a classroom LAN with no route out, hand
+        // tracking then renders nothing at all — while working perfectly on a
+        // machine that has internet.
+// OculusHandModel takes a LOADER here, not a path — a GLTFLoader with the
+// path already set is handed straight to XRHandMeshModel.
+const handProfileLoader = () => new GLTFLoader().setPath(asset('hand-profiles/generic-hand/'));
 
 /**
  * Main gear simulator application
@@ -72,14 +83,13 @@ export class GearSimulator {
       left: null,
       right: null,
       top: null,
-      debug: null,
       incompatibility: null,
     };
 
     // Quiz mode (set externally by main.js)
     this.quizMode = null;
 
-    // Debug log buffer for VR panel
+    // Debug log buffer
     this.debugLogs = [];
     this.maxDebugLogs = 8;
 
@@ -115,12 +125,12 @@ export class GearSimulator {
 
   initAudio() {
     // Load sound effects
-    this.sounds.playGear = new Audio("/public/play-gear.mp3");
-    this.sounds.placeGear = new Audio("/public/place-gear.mp3");
-    this.sounds.incompatibleGear = new Audio("/public/incompatible-gear.mp3");
-    this.sounds.introductionGear = new Audio("/public/introduction-gear.mp3");
-    this.sounds.jammedGear = new Audio("/public/jammed-gear.mp3");
-    this.sounds.overlappingGear = new Audio("/public/overlapping-gear.mp3");
+    this.sounds.playGear = new Audio(asset("play-gear.mp3"));
+    this.sounds.placeGear = new Audio(asset("place-gear.mp3"));
+    this.sounds.incompatibleGear = new Audio(asset("incompatible-gear.mp3"));
+    this.sounds.introductionGear = new Audio(asset("introduction-gear.mp3"));
+    this.sounds.jammedGear = new Audio(asset("jammed-gear.mp3"));
+    this.sounds.overlappingGear = new Audio(asset("overlapping-gear.mp3"));
 
     // Preload audio
     this.sounds.playGear.load();
@@ -292,14 +302,14 @@ export class GearSimulator {
     // Hand 0 (right)
     this.hand1 = this.renderer.xr.getHand(0);
     this.hand1.userData.handedness = "right";
-    this.handModel1 = new OculusHandModel(this.hand1);
+    this.handModel1 = new OculusHandModel(this.hand1, handProfileLoader());
     this.hand1.add(this.handModel1);
     this.scene.add(this.hand1);
 
     // Hand 1 (left)
     this.hand2 = this.renderer.xr.getHand(1);
     this.hand2.userData.handedness = "left";
-    this.handModel2 = new OculusHandModel(this.hand2);
+    this.handModel2 = new OculusHandModel(this.hand2, handProfileLoader());
     this.hand2.add(this.handModel2);
     this.scene.add(this.hand2);
   }
@@ -934,10 +944,6 @@ export class GearSimulator {
     // Create top quick actions panel
     this.xrPanels.top = this.createQuickActionsPanel();
     this.scene.add(this.xrPanels.top);
-
-    // Create debug panel
-    this.xrPanels.debug = this.createDebugPanel();
-    this.scene.add(this.xrPanels.debug);
   }
 
   removeXRPanels() {
@@ -953,11 +959,7 @@ export class GearSimulator {
       this.scene.remove(this.xrPanels.top);
       this.xrPanels.top = null;
     }
-    if (this.xrPanels.debug) {
-      this.scene.remove(this.xrPanels.debug);
-      this.xrPanels.debug = null;
-    }
-    // Clear debug logs when exitingfXR
+    // Clear debug logs when exiting XR
     this.debugLogs = [];
   }
 
@@ -1538,70 +1540,6 @@ export class GearSimulator {
     return panel;
   }
 
-  createDebugPanel() {
-    const panel = new THREE.Group();
-    panel.name = "debugPanel";
-
-    // Panel background
-    const bgGeometry = new THREE.PlaneGeometry(0.5, 0.4);
-    const bgMaterial = new THREE.MeshBasicMaterial({
-      color: 0x0a0a1a,
-      transparent: true,
-      opacity: 0.95,
-      side: THREE.DoubleSide,
-    });
-    const background = new THREE.Mesh(bgGeometry, bgMaterial);
-    panel.add(background);
-
-    // Title
-    const titleCanvas = this.createTextCanvas(
-      "Debug Log",
-      200,
-      30,
-      "18px Arial",
-      "#ff6b6b",
-    );
-    const titleTexture = new THREE.CanvasTexture(titleCanvas);
-    const titleMaterial = new THREE.MeshBasicMaterial({
-      map: titleTexture,
-      transparent: true,
-    });
-    const titleMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.4, 0.06),
-      titleMaterial,
-    );
-    titleMesh.position.set(0, 0.15, 0.01);
-    panel.add(titleMesh);
-
-    // Debug content placeholder
-    const debugCanvas = this.createTextCanvas(
-      "Waiting for events...",
-      240,
-      180,
-      "12px monospace",
-      "#00ff00",
-      true,
-    );
-    const debugTexture = new THREE.CanvasTexture(debugCanvas);
-    const debugMaterial = new THREE.MeshBasicMaterial({
-      map: debugTexture,
-      transparent: true,
-    });
-    const debugMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.45, 0.28),
-      debugMaterial,
-    );
-    debugMesh.position.set(0, -0.04, 0.01);
-    debugMesh.name = "debugContent";
-    panel.add(debugMesh);
-
-    // Position panel below and to the left (near left wrist in VR)
-    panel.position.set(-0.6, 0.8, -0.3);
-    panel.rotation.y = Math.PI / 5; // Angled toward user
-
-    return panel;
-  }
-
   debugLog(message) {
     const timestamp = new Date().toLocaleTimeString("en-US", {
       hour12: false,
@@ -1617,41 +1555,6 @@ export class GearSimulator {
     if (this.debugLogs.length > this.maxDebugLogs) {
       this.debugLogs.shift();
     }
-
-    // Update the debug panel if it exists
-    this.updateDebugPanel();
-
-    // Also log to console for non-VR debugging
-    console.log("[XR Debug]", message);
-  }
-
-  updateDebugPanel() {
-    if (!this.xrPanels.debug) return;
-
-    const debugMesh = this.xrPanels.debug.getObjectByName("debugContent");
-    if (!debugMesh || !debugMesh.material) return;
-
-    const text =
-      this.debugLogs.length > 0
-        ? this.debugLogs.join("\n")
-        : "Waiting for events...";
-
-    const canvas = this.createTextCanvas(
-      text,
-      240,
-      180,
-      "11px monospace",
-      "#00ff00",
-      true,
-    );
-
-    // Dispose old texture to prevent memory leak
-    if (debugMesh.material.map) {
-      debugMesh.material.map.dispose();
-    }
-
-    debugMesh.material.map = new THREE.CanvasTexture(canvas);
-    debugMesh.material.map.needsUpdate = true;
   }
 
   create3DButton(width, height, label, color, onClick) {

@@ -1,6 +1,21 @@
 import * as THREE from "three";
+import { clearExamLink } from './examLink.js';
 
-const BASE_URL = "http://192.168.102.222:5000/api";
+/**
+ * Root-relative on purpose. A bare "/api" inherits the page's own scheme and
+ * host, so it follows the headset to whatever address it arrived on and the
+ * server proxies it from that same origin — no CORS, no mixed content, and no
+ * hardcoded IP to chase when the DHCP lease moves.
+ *
+ * This was http://192.168.102.62:5000/api, which works on a desk and fails in
+ * a classroom: a plain-HTTP fetch from an HTTPS page is active mixed content
+ * and Chromium blocks it silently, so the quiz simply never loads.
+ *
+ * Note the asymmetry with assets: assets are subpath-relative, the API is
+ * root-relative. /api is proxied at the server root and shared by every module
+ * whatever subpath it is mounted under.
+ */
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 const TIMER_DURATION = 180; // 3 minutes per question
 const INPUT_TORQUE = 10; // Base input torque in Nm
 
@@ -56,7 +71,6 @@ export class QuizMode {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
 
-    console.log("fetching")
     try {
       const res = await fetch(
         `${BASE_URL}/questions/exam/${this.examId}`,
@@ -105,6 +119,9 @@ export class QuizMode {
       });
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      // The one place a save is KNOWN to have succeeded. A tab left open after
+      // a finished exam must not hand the next student this identity.
+      clearExamLink();
       return true;
     } catch (error) {
       console.error("Score submission failed:", error);

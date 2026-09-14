@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Gear Simulator — User Manual</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 13px;
+    line-height: 1.65;
+    color: #1a1a2e;
+    background: #fff;
+  }
+  .page {
+    width: 794px;
+    min-height: 1123px;
+    padding: 56px 60px;
+    margin: 0 auto;
+    page-break-after: always;
+    position: relative;
+  }
+  .page:last-child { page-break-after: avoid; }
+
+  /* Cover */
+  .cover {
+    background: linear-gradient(150deg, #0f3460 0%, #1a1a2e 55%, #0d1b2e 100%);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 80px 60px;
+  }
+  .cover-badge {
+    display: inline-block;
+    background: rgba(74,144,217,0.18);
+    border: 1.5px solid rgba(74,144,217,0.55);
+    color: #4a90d9;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    padding: 5px 18px;
+    border-radius: 20px;
+    margin-bottom: 28px;
+  }
+  .cover h1 { font-size: 40px; font-weight: 800; letter-spacing: -1px; line-height: 1.15; color: #fff; margin-bottom: 14px; }
+  .cover h1 span { color: #4a90d9; }
+  .cover-sub { font-size: 15px; color: rgba(255,255,255,0.6); margin-bottom: 56px; max-width: 440px; }
+  .cover-divider { width: 60px; height: 3px; background: #4a90d9; border-radius: 2px; margin: 0 auto 44px; }
+  .cover-features { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; width: 100%; max-width: 580px; }
+  .cover-feature { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 16px 12px; font-size: 12px; color: rgba(255,255,255,0.75); }
+  .cover-feature .icon { font-size: 22px; margin-bottom: 7px; }
+  .cover-feature strong { display: block; color: #fff; margin-bottom: 3px; font-size: 12px; }
+  .cover-version { margin-top: 56px; font-size: 11px; color: rgba(255,255,255,0.35); letter-spacing: 1px; }
+
+  /* TOC */
+  .toc-title { font-size: 22px; font-weight: 800; color: #1a1a2e; margin-bottom: 28px; padding-bottom: 12px; border-bottom: 2.5px solid #4a90d9; }
+  .toc-section { margin-bottom: 5px; }
+  .toc-section a { display: flex; align-items: center; justify-content: space-between; text-decoration: none; color: #1a1a2e; font-size: 13px; padding: 5px 0; border-bottom: 1px dotted #d0d8f0; }
+  .toc-chapter { font-weight: 700; font-size: 14px; color: #0d2050; margin-top: 14px; margin-bottom: 2px; }
+  .toc-page { color: #4a90d9; font-weight: 600; font-size: 11px; }
+
+  /* Chapter headers */
+  .chapter-header { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 24px; padding-bottom: 14px; border-bottom: 2px solid #e8eeff; }
+  .chapter-num { font-size: 11px; font-weight: 800; letter-spacing: 2px; color: #4a90d9; background: #eef4ff; padding: 4px 10px; border-radius: 6px; white-space: nowrap; margin-top: 3px; }
+  .chapter-header h2 { font-size: 22px; font-weight: 800; color: #0d2050; line-height: 1.2; }
+  .chapter-header p { font-size: 12px; color: #6070a0; margin-top: 4px; }
+
+  h3 { font-size: 14px; font-weight: 700; color: #0d2050; margin: 22px 0 10px; padding-left: 10px; border-left: 3px solid #4a90d9; }
+  h4 { font-size: 12.5px; font-weight: 700; color: #1a2a60; margin: 14px 0 6px; }
+  p { margin-bottom: 9px; color: #2a2a4a; }
+
+  .diagram { margin: 18px 0; text-align: center; }
+  .diagram svg { max-width: 100%; }
+  .diagram-caption { font-size: 11px; color: #6070a0; margin-top: 7px; font-style: italic; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin: 14px 0; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin: 14px 0; }
+
+  .card { background: #f7f9ff; border: 1px solid #dde4f8; border-radius: 10px; padding: 14px 16px; }
+  .card-title { font-size: 12px; font-weight: 700; color: #0d2050; margin-bottom: 8px; display: flex; align-items: center; gap: 7px; }
+  .card-dot { width: 8px; height: 8px; border-radius: 50%; background: #4a90d9; flex-shrink: 0; }
+
+  .steps { list-style: none; padding: 0; }
+  .steps li { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 8px; font-size: 12.5px; }
+  .step-num { min-width: 22px; height: 22px; background: #4a90d9; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+
+  .bullets { list-style: none; padding: 0; }
+  .bullets li { padding: 4px 0 4px 16px; position: relative; font-size: 12.5px; color: #2a2a4a; }
+  .bullets li::before { content: ''; position: absolute; left: 0; top: 11px; width: 6px; height: 6px; border-radius: 50%; background: #4a90d9; }
+
+  .tip { background: #eef8f0; border-left: 3px solid #34a853; border-radius: 0 8px 8px 0; padding: 10px 14px; margin: 12px 0; font-size: 12px; }
+  .tip strong { color: #1a6e34; }
+  .note { background: #fff8e8; border-left: 3px solid #f9a825; border-radius: 0 8px 8px 0; padding: 10px 14px; margin: 12px 0; font-size: 12px; }
+  .note strong { color: #7a5a00; }
+  .info-box { background: #eef4ff; border-left: 3px solid #4a90d9; border-radius: 0 8px 8px 0; padding: 10px 14px; margin: 12px 0; font-size: 12px; }
+  .info-box strong { color: #1a3070; }
+  .warn-box { background: #fff3e0; border-left: 3px solid #ff9800; border-radius: 0 8px 8px 0; padding: 10px 14px; margin: 12px 0; font-size: 12px; }
+  .warn-box strong { color: #7a3800; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 12px 0; }
+  th { background: #0f3460; color: #fff; padding: 8px 10px; text-align: left; font-weight: 600; font-size: 11px; letter-spacing: 0.5px; }
+  td { padding: 7px 10px; border-bottom: 1px solid #e8eeff; vertical-align: middle; }
+  tr:nth-child(even) td { background: #f7f9ff; }
+
+  kbd { background: #1a1a2e; color: #fff; font-family: monospace; font-size: 11px; padding: 2px 7px; border-radius: 4px; }
+  hr { border: none; border-top: 1.5px solid #e8eeff; margin: 20px 0; }
+
+  .page-number { position: absolute; bottom: 22px; right: 60px; font-size: 10px; color: #9090b0; }
+  .header-line { position: absolute; top: 22px; left: 60px; right: 60px; display: flex; justify-content: space-between; font-size: 10px; color: #c0c8e0; border-bottom: 1px solid #e8eeff; padding-bottom: 8px; }
+
+  @media print { body { background: #fff; } .page { margin: 0; } }
+
+  /* ── Page-break safety: prevent elements from being sliced across PDF pages ── */
+  .card, .tip, .note, .info-box, .warn-box,
+  .diagram, .two-col, .three-col,
+  table, tr,
+  .steps li, .bullets li,
+  .chapter-header, .cover-features {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  h3, h4 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+</style>
+</head>
+<body>
+
+<!-- ══ PAGE 1: COVER ══ -->
+<div class="page cover">
+  <div class="cover-badge">User Manual</div>
+  <h1>3D Gear<br><span>Simulator</span></h1>
+  <p class="cover-sub">Complete guide to building, connecting, and simulating spur gear trains in 2D and immersive VR.</p>
+  <div class="cover-divider"></div>
+
+  <!-- Gear train illustration -->
+  <svg width="300" height="140" viewBox="0 0 300 140" xmlns="http://www.w3.org/2000/svg" style="margin-bottom:40px;">
+    <defs>
+      <radialGradient id="g1" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#5ba0e9"/>
+        <stop offset="100%" stop-color="#4a90d9"/>
+      </radialGradient>
+      <radialGradient id="g2" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#6abf69"/>
+        <stop offset="100%" stop-color="#43a047"/>
+      </radialGradient>
+      <radialGradient id="g3" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#ffa040"/>
+        <stop offset="100%" stop-color="#ff7c00"/>
+      </radialGradient>
+    </defs>
+    <!-- Gear 1 (large, driver) -->
+    <g transform="translate(70,70)">
+      <circle r="38" fill="url(#g1)" opacity="0.18" stroke="#4a90d9" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <circle r="32" fill="url(#g1)" opacity="0.9"/>
+      <!-- teeth stubs -->
+      <rect x="-3" y="-42" width="6" height="8" rx="2" fill="#4a90d9" transform="rotate(0)"/>
+      <rect x="-3" y="-42" width="6" height="8" rx="2" fill="#4a90d9" transform="rotate(24)"/>
+      <rect x="-3" y="-42" width="6" height="8" rx="2" fill="#4a90d9" transform="rotate(48)"/>
+      <rect x="-3" y="-42" width="6" height="8" rx="2" fill="#4a90d9" transform="rotate(72)"/>
+      <rect x="-3" y="-42" width="6" height="8" rx="2" fill="#4a90d9" transform="rotate(96)"/>
+      <rect x="-3" y="-42" width="6" height="8" rx="2" fill="#4a90d9" transform="rotate(120)"/>
+      <rect x="-3" y="-42" width="6" height="8" rx="2" fill="#4a90d9" transform="rotate(144)"/>
+      <rect x="-3" y="-42" width="6" height="8" rx="2" fill="#4a90d9" transform="rotate(168)"/>
+      <rect x="-3" y="-42" width="6" height="8" rx="2" fill="#4a90d9" transform="rotate(192)"/>
+      <rect x="-3" y="-42" width="6" height="8" rx="2" fill="#4a90d9" transform="rotate(216)"/>
+      <rect x="-3" y="-42" width="6" height="8" rx="2" fill="#4a90d9" transform="rotate(240)"/>
+      <rect x="-3" y="-42" width="6" height="8" rx="2" fill="#4a90d9" transform="rotate(264)"/>
+      <rect x="-3" y="-42" width="6" height="8" rx="2" fill="#4a90d9" transform="rotate(288)"/>
+      <rect x="-3" y="-42" width="6" height="8" rx="2" fill="#4a90d9" transform="rotate(312)"/>
+      <rect x="-3" y="-42" width="6" height="8" rx="2" fill="#4a90d9" transform="rotate(336)"/>
+      <circle r="6" fill="#0f3460"/>
+      <text y="4" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">30T</text>
+    </g>
+    <!-- Gear 2 (small) -->
+    <g transform="translate(167,70)">
+      <circle r="20" fill="url(#g2)" opacity="0.9"/>
+      <rect x="-2.5" y="-28" width="5" height="7" rx="1.5" fill="#43a047" transform="rotate(0)"/>
+      <rect x="-2.5" y="-28" width="5" height="7" rx="1.5" fill="#43a047" transform="rotate(36)"/>
+      <rect x="-2.5" y="-28" width="5" height="7" rx="1.5" fill="#43a047" transform="rotate(72)"/>
+      <rect x="-2.5" y="-28" width="5" height="7" rx="1.5" fill="#43a047" transform="rotate(108)"/>
+      <rect x="-2.5" y="-28" width="5" height="7" rx="1.5" fill="#43a047" transform="rotate(144)"/>
+      <rect x="-2.5" y="-28" width="5" height="7" rx="1.5" fill="#43a047" transform="rotate(180)"/>
+      <rect x="-2.5" y="-28" width="5" height="7" rx="1.5" fill="#43a047" transform="rotate(216)"/>
+      <rect x="-2.5" y="-28" width="5" height="7" rx="1.5" fill="#43a047" transform="rotate(252)"/>
+      <rect x="-2.5" y="-28" width="5" height="7" rx="1.5" fill="#43a047" transform="rotate(288)"/>
+      <rect x="-2.5" y="-28" width="5" height="7" rx="1.5" fill="#43a047" transform="rotate(324)"/>
+      <circle r="4" fill="#1a4a1a"/>
+      <text y="3" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">15T</text>
+    </g>
+    <!-- Gear 3 (medium) -->
+    <g transform="translate(230,70)">
+      <circle r="26" fill="url(#g3)" opacity="0.9"/>
+      <rect x="-2.5" y="-33" width="5" height="7" rx="1.5" fill="#ff7c00" transform="rotate(0)"/>
+      <rect x="-2.5" y="-33" width="5" height="7" rx="1.5" fill="#ff7c00" transform="rotate(30)"/>
+      <rect x="-2.5" y="-33" width="5" height="7" rx="1.5" fill="#ff7c00" transform="rotate(60)"/>
+      <rect x="-2.5" y="-33" width="5" height="7" rx="1.5" fill="#ff7c00" transform="rotate(90)"/>
+      <rect x="-2.5" y="-33" width="5" height="7" rx="1.5" fill="#ff7c00" transform="rotate(120)"/>
+      <rect x="-2.5" y="-33" width="5" height="7" rx="1.5" fill="#ff7c00" transform="rotate(150)"/>
+      <rect x="-2.5" y="-33" width="5" height="7" rx="1.5" fill="#ff7c00" transform="rotate(180)"/>
+      <rect x="-2.5" y="-33" width="5" height="7" rx="1.5" fill="#ff7c00" transform="rotate(210)"/>
+      <rect x="-2.5" y="-33" width="5" height="7" rx="1.5" fill="#ff7c00" transform="rotate(240)"/>
+      <rect x="-2.5" y="-33" width="5" height="7" rx="1.5" fill="#ff7c00" transform="rotate(270)"/>
+      <rect x="-2.5" y="-33" width="5" height="7" rx="1.5" fill="#ff7c00" transform="rotate(300)"/>
+      <rect x="-2.5" y="-33" width="5" height="7" rx="1.5" fill="#ff7c00" transform="rotate(330)"/>
+      <circle r="5" fill="#3a2000"/>
+      <text y="3" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">20T</text>
+    </g>
+    <!-- Rotation arrows -->
+    <path d="M 55,48 A 22,22 0 0,1 88,48" stroke="#ffffff" stroke-width="1.5" fill="none" opacity="0.5" marker-end="url(#arw)"/>
+    <path d="M 175,52 A 14,14 0 0,0 160,52" stroke="#ffffff" stroke-width="1.5" fill="none" opacity="0.5" marker-end="url(#arw)"/>
+    <path d="M 218,50 A 18,18 0 0,1 242,50" stroke="#ffffff" stroke-width="1.5" fill="none" opacity="0.5" marker-end="url(#arw)"/>
+    <!-- Labels -->
+    <text x="70" y="122" text-anchor="middle" fill="rgba(255,255,255,0.6)" font-size="8">Driver · 30 RPM</text>
+    <text x="167" y="100" text-anchor="middle" fill="rgba(255,255,255,0.6)" font-size="8">60 RPM</text>
+    <text x="230" y="107" text-anchor="middle" fill="rgba(255,255,255,0.6)" font-size="8">45 RPM</text>
+    <defs>
+      <marker id="arw" markerWidth="5" markerHeight="5" refX="3" refY="2.5" orient="auto">
+        <path d="M0,0 L5,2.5 L0,5 Z" fill="rgba(255,255,255,0.7)"/>
+      </marker>
+    </defs>
+  </svg>
+
+  <div class="cover-features">
+    <div class="cover-feature">
+      <div class="icon">⚙️</div>
+      <strong>Spur Gear Physics</strong>
+      Mathematically precise involute tooth profiles with auto-snap meshing
+    </div>
+    <div class="cover-feature">
+      <div class="icon">🔢</div>
+      <strong>Gear Ratio Engine</strong>
+      Live RPM, ratio, and direction propagation across entire gear trains
+    </div>
+    <div class="cover-feature">
+      <div class="icon">🥽</div>
+      <strong>VR Mode</strong>
+      Grab and position gears in immersive 3D with Meta Quest hand tracking
+    </div>
+  </div>
+  <div class="cover-version">3D Gear Simulator &nbsp;·&nbsp; Reference Manual</div>
+</div>
+
+<!-- ══ PAGE 2: TABLE OF CONTENTS ══ -->
+<div class="page">
+  <div class="header-line"><span>3D Gear Simulator</span><span>User Manual</span></div>
+  <div class="toc-title">Table of Contents</div>
+
+  <div class="toc-chapter">Chapter 1 &nbsp;—&nbsp; Overview</div>
+  <div class="toc-section"><a><span>1.1 &nbsp; What is the Gear Simulator?</span><span class="toc-page">3</span></a></div>
+  <div class="toc-section"><a><span>1.2 &nbsp; Interface Layout</span><span class="toc-page">3</span></a></div>
+  <div class="toc-section"><a><span>1.3 &nbsp; Theme Toggle</span><span class="toc-page">3</span></a></div>
+
+  <div class="toc-chapter">Chapter 2 &nbsp;—&nbsp; Gear Fundamentals</div>
+  <div class="toc-section"><a><span>2.1 &nbsp; Gear Parameters</span><span class="toc-page">4</span></a></div>
+  <div class="toc-section"><a><span>2.2 &nbsp; Adding Gears</span><span class="toc-page">4</span></a></div>
+  <div class="toc-section"><a><span>2.3 &nbsp; Connecting Gears (Auto-Snap)</span><span class="toc-page">4</span></a></div>
+  <div class="toc-section"><a><span>2.4 &nbsp; Gear Ratio &amp; Speed Propagation</span><span class="toc-page">4</span></a></div>
+
+  <div class="toc-chapter">Chapter 3 &nbsp;—&nbsp; Desktop Controls</div>
+  <div class="toc-section"><a><span>3.1 &nbsp; Selecting Gears</span><span class="toc-page">5</span></a></div>
+  <div class="toc-section"><a><span>3.2 &nbsp; Moving Gears (XY and Z-Axis)</span><span class="toc-page">5</span></a></div>
+  <div class="toc-section"><a><span>3.3 &nbsp; Camera Controls</span><span class="toc-page">5</span></a></div>
+  <div class="toc-section"><a><span>3.4 &nbsp; Left Control Panel</span><span class="toc-page">5</span></a></div>
+  <div class="toc-section"><a><span>3.5 &nbsp; Right Info Panel</span><span class="toc-page">5</span></a></div>
+  <div class="toc-section"><a><span>3.6 &nbsp; Animation Playback</span><span class="toc-page">6</span></a></div>
+
+  <div class="toc-chapter">Chapter 4 &nbsp;—&nbsp; Error States &amp; Feedback</div>
+  <div class="toc-section"><a><span>4.1 &nbsp; Module Incompatibility</span><span class="toc-page">7</span></a></div>
+  <div class="toc-section"><a><span>4.2 &nbsp; Gear Overlap</span><span class="toc-page">7</span></a></div>
+  <div class="toc-section"><a><span>4.3 &nbsp; Gear Jamming</span><span class="toc-page">7</span></a></div>
+  <div class="toc-section"><a><span>4.4 &nbsp; Sound Effects</span><span class="toc-page">7</span></a></div>
+
+  <div class="toc-chapter">Chapter 5 &nbsp;—&nbsp; VR / XR Mode</div>
+  <div class="toc-section"><a><span>5.1 &nbsp; Entering and Exiting VR</span><span class="toc-page">8</span></a></div>
+  <div class="toc-section"><a><span>5.2 &nbsp; Hand Gestures</span><span class="toc-page">8</span></a></div>
+  <div class="toc-section"><a><span>5.3 &nbsp; VR Floating Panels</span><span class="toc-page">8</span></a></div>
+  <div class="toc-section"><a><span>5.4 &nbsp; Moving Gears in VR</span><span class="toc-page">9</span></a></div>
+
+  <div class="toc-chapter">Chapter 6 &nbsp;—&nbsp; Quiz Mode</div>
+  <div class="toc-section"><a><span>6.1 &nbsp; Activating Quiz Mode</span><span class="toc-page">10</span></a></div>
+  <div class="toc-section"><a><span>6.2 &nbsp; Quiz Flow</span><span class="toc-page">10</span></a></div>
+  <div class="toc-section"><a><span>6.3 &nbsp; Question Types &amp; Validation</span><span class="toc-page">10</span></a></div>
+
+  <div class="toc-chapter">Chapter 7 &nbsp;—&nbsp; Quick Reference</div>
+  <div class="toc-section"><a><span>7.1 &nbsp; Desktop Shortcuts</span><span class="toc-page">11</span></a></div>
+  <div class="toc-section"><a><span>7.2 &nbsp; VR Controls Summary</span><span class="toc-page">11</span></a></div>
+  <div class="toc-section"><a><span>7.3 &nbsp; Gear Parameter Reference</span><span class="toc-page">11</span></a></div>
+
+  <div class="page-number">2</div>
+</div>
+
+<!-- ══ PAGE 3: CHAPTER 1 — OVERVIEW ══ -->
+<div class="page">
+  <div class="header-line"><span>3D Gear Simulator</span><span>Chapter 1 — Overview</span></div>
+  <div class="chapter-header">
+    <div class="chapter-num">CH 01</div>
+    <div>
+      <h2>Overview</h2>
+      <p>Introduction to the Gear Simulator, its layout, and general navigation.</p>
+    </div>
+  </div>
+
+  <h3>1.1 What is the Gear Simulator?</h3>
+  <p>The <strong>3D Gear Simulator</strong> is an interactive browser application for building and animating spur gear trains. It uses mathematically precise involute tooth profiles and real gear physics to simulate RPM, gear ratios, and rotation direction through connected gear chains.</p>
+
+  <div class="three-col" style="margin-top:14px;">
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>Build</div>
+      Add gears with custom teeth, module, and size. Drag them together to snap and mesh automatically.
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="card-dot" style="background:#34a853"></div>Simulate</div>
+      Set input RPM, press Play. Watch speed and direction propagate through the entire gear train.
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="card-dot" style="background:#ff9800"></div>Analyse</div>
+      Read live gear ratios, output RPM, rotation direction, and connection count in the info panel.
+    </div>
+  </div>
+
+  <h3>1.2 Interface Layout</h3>
+  <div class="diagram">
+    <svg width="654" height="290" viewBox="0 0 654 290" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="a1" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#ffd700"/>
+        </marker>
+      </defs>
+      <rect width="654" height="290" rx="10" fill="#1a1a2e"/>
+      <!-- Left panel -->
+      <rect x="8" y="8" width="155" height="274" rx="6" fill="#0f3460" stroke="#2a4a6a" stroke-width="1.5"/>
+      <text x="85" y="26" text-anchor="middle" fill="#4a90d9" font-size="8" font-weight="700" letter-spacing="1">GEAR CONTROLS</text>
+      <!-- Sections -->
+      <rect x="16" y="32" width="139" height="44" rx="4" fill="#1a3a60"/>
+      <text x="85" y="47" text-anchor="middle" fill="#aac4e0" font-size="7" font-weight="600">Manage Gears</text>
+      <text x="22" y="60" fill="#6090b0" font-size="6.5">Add Gear · Delete · Reset Scene</text>
+      <text x="22" y="70" fill="#6090b0" font-size="6.5">Select gear color</text>
+
+      <rect x="16" y="80" width="139" height="36" rx="4" fill="#1a3a60"/>
+      <text x="85" y="94" text-anchor="middle" fill="#aac4e0" font-size="7" font-weight="600">Animation</text>
+      <text x="22" y="107" fill="#6090b0" font-size="6.5">Input RPM · Play · Pause · Reset</text>
+
+      <rect x="16" y="120" width="139" height="74" rx="4" fill="#1a3a60"/>
+      <text x="85" y="134" text-anchor="middle" fill="#aac4e0" font-size="7" font-weight="600">Gear Parameters</text>
+      <text x="22" y="147" fill="#6090b0" font-size="6.5">Teeth · Module · Pressure Angle</text>
+      <text x="22" y="157" fill="#6090b0" font-size="6.5">Thickness · Bore Diameter</text>
+      <text x="22" y="167" fill="#6090b0" font-size="6.5">Color picker</text>
+      <text x="22" y="177" fill="#6090b0" font-size="6.5">→ used when clicking Add Gear</text>
+
+      <rect x="16" y="198" width="139" height="36" rx="4" fill="#1a3a60"/>
+      <text x="85" y="212" text-anchor="middle" fill="#aac4e0" font-size="7" font-weight="600">Position</text>
+      <text x="22" y="225" fill="#6090b0" font-size="6.5">X · Y · Z coordinates (auto-updates)</text>
+
+      <rect x="16" y="238" width="139" height="36" rx="4" fill="#1a3a60"/>
+      <text x="85" y="252" text-anchor="middle" fill="#aac4e0" font-size="7" font-weight="600">Display</text>
+      <text x="22" y="265" fill="#6090b0" font-size="6.5">Pitch Circle · Center · Theme Toggle</text>
+
+      <!-- Canvas -->
+      <rect x="172" y="8" width="312" height="274" rx="6" fill="#0d1b2e" stroke="#2a4a6a" stroke-width="1.5"/>
+      <!-- Gears in canvas -->
+      <circle cx="310" cy="145" r="42" fill="none" stroke="#4a90d9" stroke-width="0.8" stroke-dasharray="3,3" opacity="0.5"/>
+      <circle cx="310" cy="145" r="36" fill="#4a90d9" opacity="0.85"/>
+      <circle cx="310" cy="145" r="7" fill="#0f3460"/>
+      <text x="310" y="149" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">30T</text>
+      <rect x="307" y="103" width="6" height="8" rx="2" fill="#4a90d9" transform="rotate(0,310,145)"/>
+      <rect x="307" y="103" width="6" height="8" rx="2" fill="#4a90d9" transform="rotate(30,310,145)"/>
+      <rect x="307" y="103" width="6" height="8" rx="2" fill="#4a90d9" transform="rotate(60,310,145)"/>
+      <rect x="307" y="103" width="6" height="8" rx="2" fill="#4a90d9" transform="rotate(90,310,145)"/>
+      <rect x="307" y="103" width="6" height="8" rx="2" fill="#4a90d9" transform="rotate(120,310,145)"/>
+      <rect x="307" y="103" width="6" height="8" rx="2" fill="#4a90d9" transform="rotate(150,310,145)"/>
+      <rect x="307" y="103" width="6" height="8" rx="2" fill="#4a90d9" transform="rotate(180,310,145)"/>
+      <rect x="307" y="103" width="6" height="8" rx="2" fill="#4a90d9" transform="rotate(210,310,145)"/>
+      <rect x="307" y="103" width="6" height="8" rx="2" fill="#4a90d9" transform="rotate(240,310,145)"/>
+      <rect x="307" y="103" width="6" height="8" rx="2" fill="#4a90d9" transform="rotate(270,310,145)"/>
+      <rect x="307" y="103" width="6" height="8" rx="2" fill="#4a90d9" transform="rotate(300,310,145)"/>
+      <rect x="307" y="103" width="6" height="8" rx="2" fill="#4a90d9" transform="rotate(330,310,145)"/>
+      <!-- second gear -->
+      <circle cx="390" cy="145" r="22" fill="#43a047" opacity="0.85"/>
+      <circle cx="390" cy="145" r="4" fill="#1a4a1a"/>
+      <text x="390" y="149" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">15T</text>
+      <!-- Selected highlight ring -->
+      <circle cx="310" cy="145" r="38" fill="none" stroke="#00aa00" stroke-width="2" opacity="0.6"/>
+      <!-- Pitch circle dashed -->
+      <circle cx="310" cy="145" r="36" fill="none" stroke="#ffd700" stroke-width="1" stroke-dasharray="4,3" opacity="0.6"/>
+      <!-- VR button -->
+      <rect x="282" y="265" width="56" height="12" rx="4" fill="#4a90d9"/>
+      <text x="310" y="274" text-anchor="middle" fill="#fff" font-size="6.5" font-weight="600">Enter VR</text>
+
+      <!-- Right panel -->
+      <rect x="492" y="8" width="154" height="274" rx="6" fill="#0f3460" stroke="#2a4a6a" stroke-width="1.5"/>
+      <text x="569" y="26" text-anchor="middle" fill="#4a90d9" font-size="8" font-weight="700" letter-spacing="1">GEAR INFO</text>
+      <text x="569" y="46" text-anchor="middle" fill="#aac4e0" font-size="9" font-weight="700">Gear #1</text>
+      <line x1="502" y1="52" x2="636" y2="52" stroke="#2a4a6a" stroke-width="1"/>
+      <text x="502" y="64" fill="#6090b0" font-size="7">Teeth</text>
+      <text x="636" y="64" text-anchor="end" fill="#aac4e0" font-size="7">30</text>
+      <text x="502" y="76" fill="#6090b0" font-size="7">Pitch Dia.</text>
+      <text x="636" y="76" text-anchor="end" fill="#aac4e0" font-size="7">60 mm</text>
+      <text x="502" y="88" fill="#6090b0" font-size="7">Module</text>
+      <text x="636" y="88" text-anchor="end" fill="#aac4e0" font-size="7">2</text>
+      <text x="502" y="100" fill="#6090b0" font-size="7">RPM</text>
+      <text x="636" y="100" text-anchor="end" fill="#4a90d9" font-size="7" font-weight="700">30.0</text>
+      <text x="502" y="112" fill="#6090b0" font-size="7">Direction</text>
+      <text x="636" y="112" text-anchor="end" fill="#34a853" font-size="7" font-weight="700">CW</text>
+      <text x="502" y="124" fill="#6090b0" font-size="7">Gear Ratio</text>
+      <text x="636" y="124" text-anchor="end" fill="#aac4e0" font-size="7">30:15</text>
+      <text x="502" y="136" fill="#6090b0" font-size="7">Connected</text>
+      <text x="636" y="136" text-anchor="end" fill="#aac4e0" font-size="7">1 gear</text>
+
+      <!-- Annotations -->
+      <line x1="163" y1="52" x2="172" y2="52" stroke="#ffd700" stroke-width="1.2" marker-end="url(#a1)"/>
+      <text x="85" y="282" text-anchor="middle" fill="#ffd700" font-size="8" font-weight="600">Left — Controls</text>
+      <text x="310" y="282" text-anchor="middle" fill="#ffd700" font-size="8" font-weight="600">3D Canvas</text>
+      <text x="569" y="282" text-anchor="middle" fill="#ffd700" font-size="8" font-weight="600">Right — Gear Info</text>
+    </svg>
+    <p class="diagram-caption">Figure 1.1 — Application layout: left controls panel, 3D canvas with gear train, right info panel.</p>
+  </div>
+
+  <h3>1.3 Theme Toggle</h3>
+  <p>Click <strong>Toggle Theme</strong> at the bottom of the left panel to switch between <strong>Dark Mode</strong> (default — deep navy background) and <strong>Light Mode</strong> (white/gray background). Both modes preserve all functionality.</p>
+
+  <div class="page-number">3</div>
+</div>
+
+<!-- ══ PAGE 4: CHAPTER 2 — GEAR FUNDAMENTALS ══ -->
+<div class="page">
+  <div class="header-line"><span>3D Gear Simulator</span><span>Chapter 2 — Gear Fundamentals</span></div>
+  <div class="chapter-header">
+    <div class="chapter-num">CH 02</div>
+    <div>
+      <h2>Gear Fundamentals</h2>
+      <p>Understanding gear parameters, adding gears, and how auto-snap meshing works.</p>
+    </div>
+  </div>
+
+  <h3>2.1 Gear Parameters</h3>
+  <table>
+    <tr><th>Parameter</th><th>Default</th><th>Range</th><th>What it controls</th></tr>
+    <tr><td><strong>Teeth</strong></td><td>20</td><td>8 – 100</td><td>Number of teeth. More teeth = larger gear. <em>Must match module to mesh.</em></td></tr>
+    <tr><td><strong>Module</strong></td><td>2 mm</td><td>0.5 – 10</td><td>Tooth size scale. <strong>Two gears must share the same module to mesh.</strong></td></tr>
+    <tr><td><strong>Pressure Angle</strong></td><td>20°</td><td>14.5 – 25°</td><td>Contact angle of teeth. 20° is standard.</td></tr>
+    <tr><td><strong>Thickness</strong></td><td>5 mm</td><td>1 – 20</td><td>Depth of the gear (extrusion width).</td></tr>
+    <tr><td><strong>Bore Diameter</strong></td><td>5 mm</td><td>1 – 20</td><td>Diameter of the center hole (shaft size).</td></tr>
+    <tr><td><strong>Color</strong></td><td>#4a90d9</td><td>Any color</td><td>Visual color of the gear in the 3D view.</td></tr>
+  </table>
+
+  <div class="info-box"><strong>Key rule:</strong> Two gears can only mesh if their <strong>Module</strong> values are identical (within ±0.001). If modules differ, the snap will be blocked and an error is shown.</div>
+
+  <h3>2.2 Adding Gears</h3>
+  <ol class="steps">
+    <li><div class="step-num">1</div>Configure the desired parameters in the <strong>Gear Parameters</strong> section of the left panel.</li>
+    <li><div class="step-num">2</div>Click <strong>Add Gear</strong>. The new gear appears in the scene, offset from existing gears.</li>
+    <li><div class="step-num">3</div>The new gear is automatically selected (green emissive glow).</li>
+    <li><div class="step-num">4</div>Drag it into position. Parameters can be changed before or after adding.</li>
+  </ol>
+
+  <h3>2.3 Connecting Gears (Auto-Snap)</h3>
+  <p>Gears connect automatically when dragged within meshing range. No manual "connect" step is needed.</p>
+
+  <!-- Auto-snap diagram -->
+  <div class="diagram">
+    <svg width="580" height="160" viewBox="0 0 580 160" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="a2" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#9090c0"/>
+        </marker>
+        <marker id="a3" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#34a853"/>
+        </marker>
+      </defs>
+      <rect width="580" height="160" rx="8" fill="#0d1b2e"/>
+
+      <!-- Stage 1: Too far -->
+      <text x="80" y="20" text-anchor="middle" fill="#6090b0" font-size="8" font-weight="700">TOO FAR — No Snap</text>
+      <circle cx="42" cy="85" r="30" fill="#4a90d9" opacity="0.85"/>
+      <text x="42" y="89" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">20T</text>
+      <circle cx="118" cy="85" r="20" fill="#43a047" opacity="0.85"/>
+      <text x="118" y="89" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">10T</text>
+      <line x1="72" y1="85" x2="98" y2="85" stroke="#555" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <text x="85" y="79" text-anchor="middle" fill="#777" font-size="7">gap &gt; 5u</text>
+
+      <!-- Divider -->
+      <line x1="162" y1="10" x2="162" y2="150" stroke="#1e2d50" stroke-width="1"/>
+
+      <!-- Stage 2: In range -->
+      <text x="243" y="20" text-anchor="middle" fill="#ffd700" font-size="8" font-weight="700">IN RANGE — Snapping</text>
+      <circle cx="200" cy="85" r="30" fill="#4a90d9" opacity="0.85"/>
+      <text x="200" y="89" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">20T</text>
+      <circle cx="257" cy="85" r="20" fill="#43a047" opacity="0.85"/>
+      <text x="257" y="89" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">10T</text>
+      <!-- Snap distance = (30+20) = 50 -->
+      <line x1="200" y1="85" x2="257" y2="85" stroke="#ffd700" stroke-width="1" stroke-dasharray="2,2"/>
+      <text x="228" y="79" text-anchor="middle" fill="#ffd700" font-size="7">50u ideal</text>
+      <!-- Snap threshold ring -->
+      <circle cx="200" cy="85" r="35" fill="none" stroke="#ffd700" stroke-width="1" stroke-dasharray="2,3" opacity="0.5"/>
+
+      <!-- Divider -->
+      <line x1="326" y1="10" x2="326" y2="150" stroke="#1e2d50" stroke-width="1"/>
+
+      <!-- Stage 3: Meshed -->
+      <text x="453" y="20" text-anchor="middle" fill="#34a853" font-size="8" font-weight="700">MESHED — Rotating</text>
+      <circle cx="400" cy="85" r="30" fill="#4a90d9" opacity="0.85"/>
+      <text x="400" y="89" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">20T</text>
+      <circle cx="450" cy="85" r="20" fill="#43a047" opacity="0.85"/>
+      <text x="450" y="89" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">10T</text>
+      <!-- Rotation arrows -->
+      <path d="M388,55 A 12,12 0 0,1 412,55" stroke="#fff" stroke-width="1.5" fill="none" opacity="0.7" marker-end="url(#a2)"/>
+      <path d="M458,65 A 8,8 0 0,0 442,65" stroke="#fff" stroke-width="1.5" fill="none" opacity="0.7" marker-end="url(#a2)"/>
+      <text x="400" y="130" text-anchor="middle" fill="#4a90d9" font-size="8">CW · 30 RPM</text>
+      <text x="450" y="130" text-anchor="middle" fill="#43a047" font-size="8">CCW · 60 RPM</text>
+      <!-- Green connection indicator -->
+      <circle cx="425" cy="85" r="4" fill="#34a853" opacity="0.9"/>
+      <text x="540" y="89" text-anchor="middle" fill="#6090b0" font-size="7">Opposite</text>
+      <text x="540" y="99" text-anchor="middle" fill="#6090b0" font-size="7">direction,</text>
+      <text x="540" y="109" text-anchor="middle" fill="#6090b0" font-size="7">2× speed</text>
+    </svg>
+    <p class="diagram-caption">Figure 2.1 — Gear snap sequence: gears too far apart (no snap), in snap range (alignment occurs), fully meshed (opposite rotation, speed ratio applied).</p>
+  </div>
+
+  <h3>2.4 Gear Ratio &amp; Speed Propagation</h3>
+  <div class="two-col">
+    <div>
+      <p>When gears are connected, speed propagates through the chain using:</p>
+      <div style="background:#0f3460; color:#aac4e0; padding:10px 14px; border-radius:8px; font-family:monospace; font-size:12px; margin:8px 0;">
+        RPM₂ = RPM₁ × (Teeth₁ ÷ Teeth₂)
+      </div>
+      <ul class="bullets">
+        <li><strong>More teeth</strong> on output = slower speed, more torque</li>
+        <li><strong>Fewer teeth</strong> on output = faster speed, less torque</li>
+        <li>Meshed gears always rotate in <strong>opposite directions</strong></li>
+        <li>Speed cascades through the entire connected chain (BFS)</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>Example Chain</div>
+      <table style="margin:0;">
+        <tr><th>Gear</th><th>Teeth</th><th>RPM</th><th>Dir</th></tr>
+        <tr><td>Driver</td><td>30</td><td>30</td><td style="color:#34a853">CW</td></tr>
+        <tr><td>Gear 2</td><td>15</td><td>60</td><td style="color:#ff9800">CCW</td></tr>
+        <tr><td>Gear 3</td><td>20</td><td>45</td><td style="color:#34a853">CW</td></tr>
+      </table>
+      <p style="margin-top:8px; font-size:11px; color:#6090b0;">30×(30÷15)=60 &nbsp;·&nbsp; 60×(15÷20)=45</p>
+    </div>
+  </div>
+
+  <div class="page-number">4</div>
+</div>
+
+<!-- ══ PAGE 5: CHAPTER 3 — DESKTOP CONTROLS ══ -->
+<div class="page">
+  <div class="header-line"><span>3D Gear Simulator</span><span>Chapter 3 — Desktop Controls</span></div>
+  <div class="chapter-header">
+    <div class="chapter-num">CH 03</div>
+    <div>
+      <h2>Desktop Controls</h2>
+      <p>Mouse interactions, left panel controls, right info panel, and animation playback.</p>
+    </div>
+  </div>
+
+  <!-- Annotated left panel -->
+  <div class="diagram">
+    <svg width="654" height="310" viewBox="0 0 654 310" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="a4" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#ffd700"/>
+        </marker>
+      </defs>
+      <rect width="200" height="310" rx="8" fill="#0f3460" stroke="#2a4a6a" stroke-width="1.5"/>
+      <text x="100" y="20" text-anchor="middle" fill="#4a90d9" font-size="9" font-weight="700" letter-spacing="1">GEAR CONTROLS</text>
+
+      <!-- Manage Gears -->
+      <rect x="8" y="26" width="184" height="12" rx="2" fill="#1a3060"/>
+      <text x="100" y="35" text-anchor="middle" fill="#6090b0" font-size="7" font-weight="600">MANAGE GEARS</text>
+      <rect x="8" y="40" width="58" height="18" rx="4" fill="#4a90d9"/>
+      <text x="37" y="52" text-anchor="middle" fill="#fff" font-size="7" font-weight="700">Add Gear</text>
+      <rect x="70" y="40" width="65" height="18" rx="4" fill="#8b0000"/>
+      <text x="102" y="52" text-anchor="middle" fill="#ff8080" font-size="7">Delete Selected</text>
+      <rect x="139" y="40" width="53" height="18" rx="4" fill="#7a4000"/>
+      <text x="165" y="52" text-anchor="middle" fill="#ffbb66" font-size="7">Reset Scene</text>
+
+      <!-- Color -->
+      <text x="12" y="72" fill="#6090b0" font-size="7">Gear Color:</text>
+      <rect x="70" y="63" width="22" height="14" rx="3" fill="#4a90d9" stroke="#fff" stroke-width="0.5"/>
+      <text x="100" y="72" fill="#6090b0" font-size="7">#4a90d9</text>
+
+      <!-- Animation -->
+      <rect x="8" y="80" width="184" height="12" rx="2" fill="#1a3060"/>
+      <text x="100" y="89" text-anchor="middle" fill="#6090b0" font-size="7" font-weight="600">ANIMATION</text>
+      <text x="12" y="104" fill="#6090b0" font-size="7">Input RPM:</text>
+      <rect x="68" y="96" width="48" height="14" rx="3" fill="#1a2a50" stroke="#2a4a6a" stroke-width="1"/>
+      <text x="92" y="106" text-anchor="middle" fill="#aac4e0" font-size="8">30</text>
+      <rect x="8" y="114" width="56" height="18" rx="4" fill="#34a853"/>
+      <text x="36" y="126" text-anchor="middle" fill="#fff" font-size="7" font-weight="700">▶ Play</text>
+      <rect x="70" y="114" width="56" height="18" rx="4" fill="#1a3060"/>
+      <text x="98" y="126" text-anchor="middle" fill="#aac4e0" font-size="7">⏸ Pause</text>
+      <rect x="132" y="114" width="60" height="18" rx="4" fill="#1a3060"/>
+      <text x="162" y="126" text-anchor="middle" fill="#aac4e0" font-size="7">↺ Reset Rot.</text>
+
+      <!-- Gear params -->
+      <rect x="8" y="136" width="184" height="12" rx="2" fill="#1a3060"/>
+      <text x="100" y="145" text-anchor="middle" fill="#6090b0" font-size="7" font-weight="600">GEAR PARAMETERS</text>
+      <text x="12" y="160" fill="#6090b0" font-size="7">Teeth:</text>
+      <rect x="55" y="152" width="40" height="13" rx="3" fill="#1a2a50" stroke="#2a4a6a" stroke-width="1"/>
+      <text x="75" y="161" text-anchor="middle" fill="#aac4e0" font-size="7">20</text>
+      <text x="100" y="160" fill="#6090b0" font-size="7">Module:</text>
+      <rect x="145" y="152" width="40" height="13" rx="3" fill="#1a2a50" stroke="#2a4a6a" stroke-width="1"/>
+      <text x="165" y="161" text-anchor="middle" fill="#aac4e0" font-size="7">2</text>
+      <text x="12" y="175" fill="#6090b0" font-size="7">Pressure Angle:</text>
+      <rect x="100" y="167" width="40" height="13" rx="3" fill="#1a2a50" stroke="#2a4a6a" stroke-width="1"/>
+      <text x="120" y="176" text-anchor="middle" fill="#aac4e0" font-size="7">20°</text>
+      <text x="12" y="190" fill="#6090b0" font-size="7">Thickness:</text>
+      <rect x="65" y="182" width="40" height="13" rx="3" fill="#1a2a50" stroke="#2a4a6a" stroke-width="1"/>
+      <text x="85" y="191" text-anchor="middle" fill="#aac4e0" font-size="7">5 mm</text>
+      <text x="110" y="190" fill="#6090b0" font-size="7">Bore Dia.:</text>
+      <rect x="155" y="182" width="35" height="13" rx="3" fill="#1a2a50" stroke="#2a4a6a" stroke-width="1"/>
+      <text x="172" y="191" text-anchor="middle" fill="#aac4e0" font-size="7">5 mm</text>
+
+      <!-- Position -->
+      <rect x="8" y="200" width="184" height="12" rx="2" fill="#1a3060"/>
+      <text x="100" y="209" text-anchor="middle" fill="#6090b0" font-size="7" font-weight="600">POSITION</text>
+      <text x="12" y="224" fill="#6090b0" font-size="7">X:</text>
+      <rect x="22" y="215" width="45" height="13" rx="3" fill="#1a2a50" stroke="#2a4a6a" stroke-width="1"/>
+      <text x="44" y="224" text-anchor="middle" fill="#aac4e0" font-size="7">0.00</text>
+      <text x="72" y="224" fill="#6090b0" font-size="7">Y:</text>
+      <rect x="82" y="215" width="45" height="13" rx="3" fill="#1a2a50" stroke="#2a4a6a" stroke-width="1"/>
+      <text x="104" y="224" text-anchor="middle" fill="#aac4e0" font-size="7">0.00</text>
+      <text x="132" y="224" fill="#6090b0" font-size="7">Z:</text>
+      <rect x="142" y="215" width="45" height="13" rx="3" fill="#1a2a50" stroke="#2a4a6a" stroke-width="1"/>
+      <text x="164" y="224" text-anchor="middle" fill="#aac4e0" font-size="7">0.00</text>
+      <text x="12" y="236" fill="#4a7090" font-size="6.5" font-style="italic">Drag gear to move. Shift+drag for Z-axis.</text>
+
+      <!-- Display -->
+      <rect x="8" y="242" width="184" height="12" rx="2" fill="#1a3060"/>
+      <text x="100" y="251" text-anchor="middle" fill="#6090b0" font-size="7" font-weight="600">DISPLAY</text>
+      <rect x="8" y="257" width="10" height="10" rx="2" fill="#1a2a50" stroke="#2a4a6a" stroke-width="1"/>
+      <text x="22" y="265" fill="#6090b0" font-size="7">Pitch Circle</text>
+      <rect x="78" y="257" width="10" height="10" rx="2" fill="#1a2a50" stroke="#2a4a6a" stroke-width="1"/>
+      <text x="92" y="265" fill="#6090b0" font-size="7">Center Marker</text>
+      <rect x="8" y="272" width="184" height="16" rx="4" fill="#2a4060"/>
+      <text x="100" y="283" text-anchor="middle" fill="#aac4e0" font-size="7">Toggle Theme</text>
+
+      <!-- Annotations -->
+      <line x1="220" y1="49" x2="200" y2="49" stroke="#ffd700" stroke-width="1.2" marker-end="url(#a4)"/>
+      <text x="226" y="46" fill="#ffd700" font-size="8" font-weight="600">Manage Gears</text>
+      <text x="226" y="56" fill="#9090b0" font-size="7">Add · Delete · Reset all</text>
+
+      <line x1="220" y1="123" x2="200" y2="123" stroke="#ffd700" stroke-width="1.2" marker-end="url(#a4)"/>
+      <text x="226" y="120" fill="#ffd700" font-size="8" font-weight="600">Animation controls</text>
+      <text x="226" y="130" fill="#9090b0" font-size="7">Set RPM then Play</text>
+
+      <line x1="220" y1="171" x2="200" y2="171" stroke="#ffd700" stroke-width="1.2" marker-end="url(#a4)"/>
+      <text x="226" y="168" fill="#ffd700" font-size="8" font-weight="600">Gear parameters</text>
+      <text x="226" y="178" fill="#9090b0" font-size="7">Set before clicking Add Gear</text>
+
+      <line x1="220" y1="222" x2="200" y2="222" stroke="#ffd700" stroke-width="1.2" marker-end="url(#a4)"/>
+      <text x="226" y="219" fill="#ffd700" font-size="8" font-weight="600">Position (auto-updates on drag)</text>
+      <text x="226" y="229" fill="#9090b0" font-size="7">Shift+drag for Z depth</text>
+
+      <line x1="220" y1="263" x2="200" y2="263" stroke="#ffd700" stroke-width="1.2" marker-end="url(#a4)"/>
+      <text x="226" y="260" fill="#ffd700" font-size="8" font-weight="600">Display options</text>
+      <text x="226" y="270" fill="#9090b0" font-size="7">Pitch circle · Center dot · Theme</text>
+    </svg>
+    <p class="diagram-caption">Figure 3.1 — Left control panel with all sections annotated.</p>
+  </div>
+
+  <div class="two-col">
+    <div>
+      <h3>3.1 Selecting Gears</h3>
+      <ul class="bullets">
+        <li><kbd>Left-click</kbd> a gear → selects it (green glow + info panel updates)</li>
+        <li><kbd>Left-click</kbd> empty canvas → deselects</li>
+        <li>Hover over a gear → subtle blue-gray highlight appears</li>
+      </ul>
+      <h3>3.2 Moving Gears</h3>
+      <ul class="bullets">
+        <li><kbd>Left-click + drag</kbd> — moves gear in the XY plane</li>
+        <li><kbd>Shift + drag</kbd> — moves gear along the Z-axis (depth)</li>
+        <li>X/Y/Z fields update live as you drag</li>
+        <li>Snap check runs on every move; gears auto-connect when close enough</li>
+      </ul>
+    </div>
+    <div>
+      <h3>3.3 Camera Controls</h3>
+      <ul class="bullets">
+        <li><kbd>Middle-mouse drag</kbd> — orbit camera around the scene</li>
+        <li><kbd>Scroll wheel</kbd> — zoom in / out (range: 20 – 500 units)</li>
+        <li>Camera damping (0.05) gives a smooth, inertial feel</li>
+      </ul>
+      <h3>3.6 Animation Playback</h3>
+      <ol class="steps">
+        <li><div class="step-num">1</div>Set <strong>Input RPM</strong> (1–1000)</li>
+        <li><div class="step-num">2</div>Click <strong>▶ Play</strong> — all connected gears start rotating</li>
+        <li><div class="step-num">3</div>Click <strong>⏸ Pause</strong> — rotation stops, angles are preserved</li>
+        <li><div class="step-num">4</div>Click <strong>↺ Reset Rotation</strong> — all gears return to 0°</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="page-number">5</div>
+</div>
+
+<!-- ══ PAGE 6: DISPLAY OPTIONS + RIGHT PANEL ══ -->
+<div class="page">
+  <div class="header-line"><span>3D Gear Simulator</span><span>Chapter 3 — Desktop Controls (continued)</span></div>
+
+  <h3>3.4 Display Options</h3>
+  <div class="three-col">
+    <div class="card">
+      <div class="card-title"><div class="card-dot" style="background:#34a853"></div>Pitch Circle</div>
+      Tick <strong>Show Pitch Circle</strong> to draw a dashed green circle around each gear at the theoretical pitch diameter — the ideal meshing contact radius. Turns yellow on the selected gear.
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="card-dot" style="background:#e53935"></div>Center Marker</div>
+      Tick <strong>Show Center</strong> to place a small red sphere at the exact rotational centre of each gear. Useful for verifying gear spacing.
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="card-dot" style="background:#9090b0"></div>Theme Toggle</div>
+      Click <strong>Toggle Theme</strong> to switch between dark (navy) and light (white) UI. The 3D canvas adapts its background colour accordingly.
+    </div>
+  </div>
+
+  <!-- Pitch circle diagram -->
+  <div class="diagram">
+    <svg width="500" height="170" viewBox="0 0 500 170" xmlns="http://www.w3.org/2000/svg">
+      <rect width="500" height="170" rx="8" fill="#0d1b2e"/>
+      <!-- Gear with pitch circle + center -->
+      <g transform="translate(130,85)">
+        <!-- Outer -->
+        <circle r="55" fill="#4a90d9" opacity="0.8"/>
+        <!-- Teeth stubs -->
+        <rect x="-3" y="-62" width="6" height="7" rx="2" fill="#4a90d9" transform="rotate(0)"/>
+        <rect x="-3" y="-62" width="6" height="7" rx="2" fill="#4a90d9" transform="rotate(18)"/>
+        <rect x="-3" y="-62" width="6" height="7" rx="2" fill="#4a90d9" transform="rotate(36)"/>
+        <rect x="-3" y="-62" width="6" height="7" rx="2" fill="#4a90d9" transform="rotate(54)"/>
+        <rect x="-3" y="-62" width="6" height="7" rx="2" fill="#4a90d9" transform="rotate(72)"/>
+        <rect x="-3" y="-62" width="6" height="7" rx="2" fill="#4a90d9" transform="rotate(90)"/>
+        <rect x="-3" y="-62" width="6" height="7" rx="2" fill="#4a90d9" transform="rotate(108)"/>
+        <rect x="-3" y="-62" width="6" height="7" rx="2" fill="#4a90d9" transform="rotate(126)"/>
+        <rect x="-3" y="-62" width="6" height="7" rx="2" fill="#4a90d9" transform="rotate(144)"/>
+        <rect x="-3" y="-62" width="6" height="7" rx="2" fill="#4a90d9" transform="rotate(162)"/>
+        <rect x="-3" y="-62" width="6" height="7" rx="2" fill="#4a90d9" transform="rotate(180)"/>
+        <rect x="-3" y="-62" width="6" height="7" rx="2" fill="#4a90d9" transform="rotate(198)"/>
+        <rect x="-3" y="-62" width="6" height="7" rx="2" fill="#4a90d9" transform="rotate(216)"/>
+        <rect x="-3" y="-62" width="6" height="7" rx="2" fill="#4a90d9" transform="rotate(234)"/>
+        <rect x="-3" y="-62" width="6" height="7" rx="2" fill="#4a90d9" transform="rotate(252)"/>
+        <rect x="-3" y="-62" width="6" height="7" rx="2" fill="#4a90d9" transform="rotate(270)"/>
+        <rect x="-3" y="-62" width="6" height="7" rx="2" fill="#4a90d9" transform="rotate(288)"/>
+        <rect x="-3" y="-62" width="6" height="7" rx="2" fill="#4a90d9" transform="rotate(306)"/>
+        <rect x="-3" y="-62" width="6" height="7" rx="2" fill="#4a90d9" transform="rotate(324)"/>
+        <rect x="-3" y="-62" width="6" height="7" rx="2" fill="#4a90d9" transform="rotate(342)"/>
+        <!-- Bore -->
+        <circle r="10" fill="#0f3460"/>
+        <!-- Selected glow -->
+        <circle r="57" fill="none" stroke="#00aa00" stroke-width="2" opacity="0.7"/>
+        <!-- Pitch circle (yellow = selected) -->
+        <circle r="55" fill="none" stroke="#ffd700" stroke-width="1.5" stroke-dasharray="5,3"/>
+        <!-- Center marker -->
+        <circle r="5" fill="#e53935"/>
+        <!-- Dimension lines -->
+        <line x1="0" y1="0" x2="55" y2="0" stroke="#ffd700" stroke-width="0.8" stroke-dasharray="2,2"/>
+        <text x="28" y="-5" fill="#ffd700" font-size="8" text-anchor="middle">Pitch Radius</text>
+      </g>
+      <!-- Labels -->
+      <text x="250" y="30" fill="#aac4e0" font-size="8.5" font-weight="700">Selected Gear (Gear #1)</text>
+      <line x1="185" y1="29" x2="185" y2="50" stroke="#00aa00" stroke-width="1" stroke-dasharray="2,2"/>
+      <text x="250" y="50" fill="#00aa00" font-size="7">Green glow = selected</text>
+      <text x="250" y="65" fill="#ffd700" font-size="7">Yellow dashed = pitch circle (Show Pitch Circle ✓)</text>
+      <text x="250" y="80" fill="#e53935" font-size="7">Red dot = center marker (Show Center ✓)</text>
+      <text x="250" y="95" fill="#6090b0" font-size="7">Pitch Diameter = Teeth × Module</text>
+      <text x="250" y="108" fill="#6090b0" font-size="7">Example: 20 teeth × module 2 = 40 mm</text>
+      <text x="250" y="128" fill="#4090b0" font-size="7">Two gears mesh at exactly:</text>
+      <text x="250" y="141" fill="#4090b0" font-size="7">(PitchRadius₁ + PitchRadius₂) centre distance</text>
+    </svg>
+    <p class="diagram-caption">Figure 3.2 — Selected gear with pitch circle (yellow dashed) and center marker (red dot) visible.</p>
+  </div>
+
+  <h3>3.5 Right Info Panel</h3>
+  <p>Click any gear to see its live data in the <strong>Gear Info</strong> panel on the right:</p>
+  <table>
+    <tr><th>Field</th><th>Description</th></tr>
+    <tr><td>Gear #ID</td><td>Unique identifier assigned when the gear was added</td></tr>
+    <tr><td>Teeth</td><td>Number of teeth as configured</td></tr>
+    <tr><td>Pitch Diameter</td><td>Teeth × Module (mm) — calculated automatically</td></tr>
+    <tr><td>Module</td><td>Current module value</td></tr>
+    <tr><td>RPM</td><td>Live rotation speed (updates during Play)</td></tr>
+    <tr><td>Direction</td><td><span style="color:#34a853"><strong>CW</strong></span> (clockwise) or <span style="color:#ff9800"><strong>CCW</strong></span> (counter-clockwise)</td></tr>
+    <tr><td>Gear Ratio</td><td>Ratio to each connected gear (e.g. "30:15")</td></tr>
+    <tr><td>Connected</td><td>Number of directly meshed gears</td></tr>
+  </table>
+  <div class="note"><strong>Error states:</strong> The info panel background turns <span style="color:#e53935"><strong>red</strong></span> (module mismatch), <span style="color:#ff9800"><strong>orange</strong></span> (jamming), or <span style="color:#9c27b0"><strong>purple</strong></span> (overlap) when a problem is detected.</div>
+
+  <div class="page-number">6</div>
+</div>
+
+<!-- ══ PAGE 7: CHAPTER 4 — ERRORS ══ -->
+<div class="page">
+  <div class="header-line"><span>3D Gear Simulator</span><span>Chapter 4 — Error States &amp; Feedback</span></div>
+  <div class="chapter-header">
+    <div class="chapter-num">CH 04</div>
+    <div>
+      <h2>Error States &amp; Feedback</h2>
+      <p>The simulator detects three types of errors and provides visual, textual, and audio feedback for each.</p>
+    </div>
+  </div>
+
+  <!-- Error state diagram -->
+  <div class="diagram">
+    <svg width="620" height="160" viewBox="0 0 620 160" xmlns="http://www.w3.org/2000/svg">
+      <rect width="620" height="160" rx="8" fill="#0d1b2e"/>
+
+      <!-- Error 1: Incompatible -->
+      <text x="93" y="22" text-anchor="middle" fill="#aac4e0" font-size="8" font-weight="700">MODULE MISMATCH</text>
+      <circle cx="55" cy="80" r="30" fill="#e53935" opacity="0.85"/>
+      <text x="55" y="78" text-anchor="middle" fill="#fff" font-size="7" font-weight="700">M=2</text>
+      <text x="55" y="89" text-anchor="middle" fill="#ffaaaa" font-size="6">20T</text>
+      <circle cx="125" cy="80" r="20" fill="#e53935" opacity="0.6"/>
+      <text x="125" y="78" text-anchor="middle" fill="#fff" font-size="7" font-weight="700">M=3</text>
+      <text x="125" y="89" text-anchor="middle" fill="#ffaaaa" font-size="6">10T</text>
+      <text x="93" y="130" text-anchor="middle" fill="#e53935" font-size="8" font-weight="600">Red</text>
+      <text x="93" y="142" text-anchor="middle" fill="#6090b0" font-size="7">Different module values</text>
+      <text x="93" y="152" text-anchor="middle" fill="#6090b0" font-size="7">Cannot mesh</text>
+
+      <line x1="180" y1="20" x2="180" y2="155" stroke="#1e2d50" stroke-width="1"/>
+
+      <!-- Error 2: Jamming -->
+      <text x="310" y="22" text-anchor="middle" fill="#aac4e0" font-size="8" font-weight="700">GEAR JAMMING (ODD CYCLE)</text>
+      <circle cx="265" cy="65" r="22" fill="#ff9800" opacity="0.85"/>
+      <text x="265" y="69" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">A</text>
+      <circle cx="310" cy="105" r="22" fill="#ff9800" opacity="0.85"/>
+      <text x="310" y="109" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">B</text>
+      <circle cx="355" cy="65" r="22" fill="#ff9800" opacity="0.85"/>
+      <text x="355" y="69" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">C</text>
+      <line x1="282" y1="73" x2="295" y2="98" stroke="#ff9800" stroke-width="2"/>
+      <line x1="325" y1="98" x2="338" y2="73" stroke="#ff9800" stroke-width="2"/>
+      <line x1="285" y1="60" x2="333" y2="60" stroke="#ff9800" stroke-width="2" stroke-dasharray="3,2"/>
+      <text x="309" y="57" text-anchor="middle" fill="#ff9800" font-size="7">⚠ A↔C creates</text>
+      <text x="309" y="47" text-anchor="middle" fill="#ff9800" font-size="7">odd (3) cycle</text>
+      <text x="310" y="130" text-anchor="middle" fill="#ff9800" font-size="8" font-weight="600">Orange</text>
+      <text x="310" y="142" text-anchor="middle" fill="#6090b0" font-size="7">Connecting A-B-C-A creates</text>
+      <text x="310" y="152" text-anchor="middle" fill="#6090b0" font-size="7">locked rotation (odd cycle)</text>
+
+      <line x1="440" y1="20" x2="440" y2="155" stroke="#1e2d50" stroke-width="1"/>
+
+      <!-- Error 3: Overlap -->
+      <text x="530" y="22" text-anchor="middle" fill="#aac4e0" font-size="8" font-weight="700">GEAR OVERLAP</text>
+      <circle cx="505" cy="80" r="30" fill="#9c27b0" opacity="0.85"/>
+      <text x="505" y="84" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">20T</text>
+      <circle cx="548" cy="80" r="22" fill="#9c27b0" opacity="0.85"/>
+      <text x="548" y="84" text-anchor="middle" fill="#fff" font-size="7" font-weight="700">15T</text>
+      <!-- overlap hatch -->
+      <circle cx="530" cy="80" r="10" fill="#7b1fa2" opacity="0.8"/>
+      <text x="530" y="130" text-anchor="middle" fill="#9c27b0" font-size="8" font-weight="600">Purple</text>
+      <text x="530" y="142" text-anchor="middle" fill="#6090b0" font-size="7">Gears pushed</text>
+      <text x="530" y="152" text-anchor="middle" fill="#6090b0" font-size="7">too close together</text>
+    </svg>
+    <p class="diagram-caption">Figure 4.1 — Three error states: module mismatch (red), gear jamming/odd cycle (orange), gear overlap (purple).</p>
+  </div>
+
+  <div class="three-col">
+    <div>
+      <h3>4.1 Module Mismatch</h3>
+      <ul class="bullets">
+        <li><strong>Cause:</strong> Two gears with different Module values are dragged together</li>
+        <li><strong>Visual:</strong> Gear turns red</li>
+        <li><strong>Message:</strong> "Gears incompatible — modules don't match"</li>
+        <li><strong>Sound:</strong> incompatible-gear.mp3</li>
+        <li><strong>Fix:</strong> Move apart, or change both gears to the same module</li>
+      </ul>
+    </div>
+    <div>
+      <h3>4.2 Gear Jamming</h3>
+      <ul class="bullets">
+        <li><strong>Cause:</strong> Connecting gears would form a closed loop with an odd number of meshes</li>
+        <li><strong>Visual:</strong> Gear turns orange</li>
+        <li><strong>Message:</strong> "Gear jamming! Locked gear train cycle."</li>
+        <li><strong>Sound:</strong> jammed-gear.mp3</li>
+        <li><strong>Fix:</strong> Move gear to break the cycle. Play is disabled while jamming exists</li>
+      </ul>
+    </div>
+    <div>
+      <h3>4.3 Gear Overlap</h3>
+      <ul class="bullets">
+        <li><strong>Cause:</strong> Gears pushed closer than 90% of ideal mesh distance</li>
+        <li><strong>Visual:</strong> Gear turns purple</li>
+        <li><strong>Message:</strong> "Gears overlapping! Move gear further apart."</li>
+        <li><strong>Sound:</strong> overlapping-gear.mp3</li>
+        <li><strong>Fix:</strong> Drag gear further away until overlap clears</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>4.4 Sound Effects</h3>
+  <table>
+    <tr><th>Sound</th><th>Trigger</th></tr>
+    <tr><td>play-gear.mp3</td><td>Clicking Play — gear rotation begins</td></tr>
+    <tr><td>place-gear.mp3</td><td>Successful gear snap-to-mesh during drag</td></tr>
+    <tr><td>incompatible-gear.mp3</td><td>Module mismatch detected during drag</td></tr>
+    <tr><td>jammed-gear.mp3</td><td>Jamming / odd cycle detected</td></tr>
+    <tr><td>overlapping-gear.mp3</td><td>Gears pushed too close together</td></tr>
+    <tr><td>introduction-gear.mp3</td><td>Entering VR mode</td></tr>
+  </table>
+
+  <div class="page-number">7</div>
+</div>
+
+<!-- ══ PAGE 8: CHAPTER 5 — VR MODE ══ -->
+<div class="page">
+  <div class="header-line"><span>3D Gear Simulator</span><span>Chapter 5 — VR / XR Mode</span></div>
+  <div class="chapter-header">
+    <div class="chapter-num">CH 05</div>
+    <div>
+      <h2>VR / XR Mode</h2>
+      <p>Immersive gear building with Meta Quest hand tracking and 3D floating control panels.</p>
+    </div>
+  </div>
+
+  <h3>5.1 Entering and Exiting VR</h3>
+  <div class="two-col">
+    <div>
+      <ol class="steps">
+        <li><div class="step-num">1</div>Open the app in a WebXR-compatible browser on a Meta Quest headset</li>
+        <li><div class="step-num">2</div>Click the <strong>Enter VR</strong> button at the bottom-centre of the page</li>
+        <li><div class="step-num">3</div>The 2D desktop panels hide; 3D floating panels appear in the VR world</li>
+        <li><div class="step-num">4</div>Intro sound plays; scene brightens for clear visibility in passthrough</li>
+        <li><div class="step-num">5</div>To exit, use the Quest system menu or the Exit button on the VR panel</li>
+      </ol>
+    </div>
+    <div class="card" style="background:#eef4ff;">
+      <div class="card-title"><div class="card-dot" style="background:#e53935"></div>VR Requirements</div>
+      <ul class="bullets" style="font-size:12px;">
+        <li>Meta Quest 2 or Quest 3 (hand tracking required)</li>
+        <li>App served over <strong>HTTPS</strong> (WebXR requirement)</li>
+        <li>Chrome or Meta Browser on the headset</li>
+        <li>Hand tracking enabled in Quest settings</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>5.2 Hand Gestures</h3>
+  <!-- Hand gesture diagram -->
+  <div class="diagram">
+    <svg width="620" height="185" viewBox="0 0 620 185" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="a5" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#9090c0"/>
+        </marker>
+      </defs>
+      <rect width="620" height="185" rx="8" fill="#0d1b2e"/>
+
+      <!-- Gesture 1: Pinch to grab -->
+      <text x="93" y="22" text-anchor="middle" fill="#aac4e0" font-size="8" font-weight="700">PINCH &amp; GRAB GEAR</text>
+      <path d="M55,120 Q40,100 45,80 Q48,65 58,65 Q65,60 68,70 Q70,60 78,60 Q86,58 87,70 Q90,60 98,62 Q106,62 105,73 Q110,68 116,72 Q120,80 114,90 Q110,100 100,120 Z" fill="#1e2d50" stroke="#3a4d80" stroke-width="1.5"/>
+      <circle cx="58" cy="82" r="6" fill="#4a90d9" opacity="0.9"/>
+      <text x="58" y="86" text-anchor="middle" fill="#fff" font-size="6">T</text>
+      <circle cx="70" cy="67" r="6" fill="#4a90d9" opacity="0.9"/>
+      <text x="70" y="71" text-anchor="middle" fill="#fff" font-size="6">I</text>
+      <line x1="58" y1="82" x2="66" y2="72" stroke="#ffd700" stroke-width="1.5" stroke-dasharray="2,2"/>
+      <circle cx="63" cy="76" r="10" fill="none" stroke="#ffd700" stroke-width="1" stroke-dasharray="2,2" opacity="0.7"/>
+      <text x="93" y="150" text-anchor="middle" fill="#ffd700" font-size="9" font-weight="600">= Grab / Select</text>
+      <text x="93" y="163" text-anchor="middle" fill="#6090b0" font-size="7">Thumb (T) + Index (I)</text>
+      <text x="93" y="174" text-anchor="middle" fill="#6090b0" font-size="7">pinch &lt; 2 cm</text>
+
+      <line x1="188" y1="18" x2="188" y2="180" stroke="#1e2d50" stroke-width="1"/>
+
+      <!-- Gesture 2: Hold + release -->
+      <text x="310" y="22" text-anchor="middle" fill="#aac4e0" font-size="8" font-weight="700">HOLD &amp; MOVE GEAR</text>
+      <!-- Gear being held -->
+      <circle cx="310" cy="90" r="28" fill="#4a90d9" opacity="0.75"/>
+      <text x="310" y="94" text-anchor="middle" fill="#fff" font-size="9" font-weight="700">20T</text>
+      <!-- hand -->
+      <path d="M262,135 Q247,115 252,95 Q255,80 265,80 Q272,75 275,85 Q277,75 285,75 Q293,73 294,85 Q297,75 305,77 Q313,77 312,88" fill="#1e2d50" stroke="#3a4d80" stroke-width="1.5"/>
+      <circle cx="264" cy="96" r="5" fill="#4a90d9" opacity="0.9"/>
+      <circle cx="276" cy="83" r="5" fill="#4a90d9" opacity="0.9"/>
+      <circle cx="264" cy="96" r="12" fill="none" stroke="#ffd700" stroke-width="1" stroke-dasharray="2,3" opacity="0.7"/>
+      <!-- movement arrow -->
+      <line x1="345" y1="90" x2="375" y2="70" stroke="#34a853" stroke-width="2" marker-end="url(#a5)"/>
+      <text x="370" y="62" fill="#34a853" font-size="7">Move hand</text>
+      <text x="370" y="72" fill="#34a853" font-size="7">→ gear follows</text>
+      <text x="310" y="155" text-anchor="middle" fill="#6090b0" font-size="7">Gear scales up 1.02× while held</text>
+      <text x="310" y="167" text-anchor="middle" fill="#6090b0" font-size="7">Release → snap check runs</text>
+      <text x="310" y="178" text-anchor="middle" fill="#6090b0" font-size="7">Haptic pulse on successful snap</text>
+
+      <line x1="430" y1="18" x2="430" y2="180" stroke="#1e2d50" stroke-width="1"/>
+
+      <!-- Gesture 3: Two-hand Z -->
+      <text x="525" y="22" text-anchor="middle" fill="#aac4e0" font-size="8" font-weight="700">TWO-HAND Z-AXIS</text>
+      <!-- Left hand pinch -->
+      <circle cx="480" cy="85" r="18" fill="#4a90d9" opacity="0.7"/>
+      <text x="480" y="89" text-anchor="middle" fill="#fff" font-size="8">Gear</text>
+      <path d="M450,130 Q438,115 442,98 Q444,86 452,86 Q458,82 460,90 Q462,82 468,82 Q474,80 475,90 Q477,82 483,83" fill="#1e2d50" stroke="#3a4d80" stroke-width="1.2"/>
+      <circle cx="452" cy="97" r="4" fill="#4a90d9" opacity="0.9"/>
+      <circle cx="461" cy="88" r="4" fill="#4a90d9" opacity="0.9"/>
+      <!-- Right hand grip -->
+      <path d="M560,130 Q548,115 552,98 Q554,86 562,86 Q568,82 570,90 Q572,82 578,82 Q584,80 585,90 Q587,82 593,83" fill="#1e2d50" stroke="#3a4d80" stroke-width="1.2"/>
+      <!-- Squeeze fist symbol -->
+      <rect x="558" y="90" width="30" height="18" rx="4" fill="#1e2d50" stroke="#3a4d80" stroke-width="1"/>
+      <text x="573" y="102" text-anchor="middle" fill="#ffd700" font-size="7" font-weight="700">GRIP</text>
+      <!-- Z-axis arrows -->
+      <line x1="480" y1="85" x2="525" y2="65" stroke="#ffd700" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <line x1="480" y1="85" x2="480" y2="55" stroke="#ffd700" stroke-width="1.5" marker-end="url(#a5)"/>
+      <text x="470" y="50" fill="#ffd700" font-size="7">+Z</text>
+      <text x="525" y="155" text-anchor="middle" fill="#6090b0" font-size="7">Primary hand grabs gear</text>
+      <text x="525" y="166" text-anchor="middle" fill="#6090b0" font-size="7">Other hand grips (squeeze)</text>
+      <text x="525" y="177" text-anchor="middle" fill="#6090b0" font-size="7">Hands apart/together = Z move</text>
+    </svg>
+    <p class="diagram-caption">Figure 5.1 — VR hand gestures: pinch to grab, hold and move, two-hand squeeze for Z-axis control.</p>
+  </div>
+
+  <h3>5.3 VR Floating Panels</h3>
+  <div class="three-col">
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>Left Control Panel</div>
+      Positioned left of the gear scene. Contains all the same controls as the desktop — Add Gear, Delete, Reset, Play, Pause, RPM (with ± buttons), and all gear parameters with increment/decrement buttons.
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="card-dot" style="background:#34a853"></div>Right Info Panel</div>
+      Positioned right of the scene. Shows selected gear data live: RPM, direction, ratio, connected count. Background colour changes on error states (red/orange/purple).
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="card-dot" style="background:#ff9800"></div>Warning Panel</div>
+      Appears in front of the user when an error is detected. Colour-coded by error type. Auto-hides after ~2 seconds or when the gear is moved away from the problem.
+    </div>
+  </div>
+
+  <div class="tip"><strong>Tip:</strong> The <strong>Ray Pointer</strong> changes colour as feedback — blue when pointing at empty space, green when hovering over a gear or panel button. Pinch to activate the hovered target.</div>
+
+  <div class="page-number">8</div>
+</div>
+
+<!-- ══ PAGE 9: CHAPTER 6 — QUIZ MODE ══ -->
+<div class="page">
+  <div class="header-line"><span>3D Gear Simulator</span><span>Chapter 6 — Quiz Mode</span></div>
+  <div class="chapter-header">
+    <div class="chapter-num">CH 06</div>
+    <div>
+      <h2>Quiz Mode</h2>
+      <p>Educational assessment mode — build gear trains to match target specifications within a time limit.</p>
+    </div>
+  </div>
+
+  <h3>6.1 Activating Quiz Mode</h3>
+  <p>Quiz Mode is activated by adding URL parameters when opening the application:</p>
+  <div style="background:#0f3460; color:#aac4e0; padding:12px 16px; border-radius:8px; font-family:monospace; font-size:12px; margin:10px 0;">
+    https://[your-server]/?user_id=<span style="color:#ffd700">123</span>&amp;exam_id=<span style="color:#4a90d9">456</span>
+  </div>
+  <ul class="bullets">
+    <li><strong>user_id</strong> — the student/learner ID used for score submission</li>
+    <li><strong>exam_id</strong> — which exam/question set to load from the server API</li>
+    <li>Without these parameters, the app runs in normal free-build mode</li>
+  </ul>
+
+  <h3>6.2 Quiz Flow</h3>
+  <!-- Quiz flow diagram -->
+  <div class="diagram">
+    <svg width="600" height="135" viewBox="0 0 600 135" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="a6" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#4a90d9"/>
+        </marker>
+      </defs>
+      <rect width="600" height="135" rx="8" fill="#0d1b2e"/>
+
+      <!-- Steps -->
+      <!-- 1 Start -->
+      <rect x="10" y="35" width="100" height="60" rx="6" fill="#0f3460" stroke="#2a4a6a" stroke-width="1.5"/>
+      <text x="60" y="58" text-anchor="middle" fill="#4a90d9" font-size="8" font-weight="700">START</text>
+      <text x="60" y="71" text-anchor="middle" fill="#aac4e0" font-size="7">Exam ID +</text>
+      <text x="60" y="81" text-anchor="middle" fill="#aac4e0" font-size="7">Question Count</text>
+      <text x="60" y="91" text-anchor="middle" fill="#34a853" font-size="7">Click "Start Quiz"</text>
+
+      <line x1="110" y1="65" x2="130" y2="65" stroke="#4a90d9" stroke-width="1.5" marker-end="url(#a6)"/>
+
+      <!-- 2 Question -->
+      <rect x="132" y="20" width="110" height="90" rx="6" fill="#0f3460" stroke="#2a4a6a" stroke-width="1.5"/>
+      <text x="187" y="40" text-anchor="middle" fill="#4a90d9" font-size="8" font-weight="700">QUESTION</text>
+      <text x="187" y="53" text-anchor="middle" fill="#aac4e0" font-size="7">Target properties</text>
+      <text x="187" y="64" text-anchor="middle" fill="#aac4e0" font-size="7">shown (RPM, ratio…)</text>
+      <text x="187" y="76" text-anchor="middle" fill="#ffd700" font-size="7">⏱ 3 min timer</text>
+      <text x="187" y="88" text-anchor="middle" fill="#aac4e0" font-size="7">Build matching</text>
+      <text x="187" y="99" text-anchor="middle" fill="#aac4e0" font-size="7">gear train</text>
+
+      <line x1="242" y1="65" x2="262" y2="65" stroke="#4a90d9" stroke-width="1.5" marker-end="url(#a6)"/>
+
+      <!-- 3 Submit -->
+      <rect x="264" y="35" width="100" height="60" rx="6" fill="#0f3460" stroke="#2a4a6a" stroke-width="1.5"/>
+      <text x="314" y="56" text-anchor="middle" fill="#4a90d9" font-size="8" font-weight="700">SUBMIT</text>
+      <text x="314" y="68" text-anchor="middle" fill="#aac4e0" font-size="7">Click "Submit</text>
+      <text x="314" y="78" text-anchor="middle" fill="#aac4e0" font-size="7">Answer" button</text>
+      <text x="314" y="88" text-anchor="middle" fill="#6090b0" font-size="7">or timer expires</text>
+
+      <line x1="364" y1="65" x2="384" y2="65" stroke="#4a90d9" stroke-width="1.5" marker-end="url(#a6)"/>
+
+      <!-- 4 Feedback -->
+      <rect x="386" y="20" width="100" height="90" rx="6" fill="#0f3460" stroke="#2a4a6a" stroke-width="1.5"/>
+      <text x="436" y="40" text-anchor="middle" fill="#4a90d9" font-size="8" font-weight="700">FEEDBACK</text>
+      <text x="436" y="54" text-anchor="middle" fill="#34a853" font-size="8" font-weight="600">✓ Correct!</text>
+      <text x="436" y="66" text-anchor="middle" fill="#6090b0" font-size="7">or</text>
+      <text x="436" y="78" text-anchor="middle" fill="#e53935" font-size="8" font-weight="600">✗ Incorrect</text>
+      <text x="436" y="92" text-anchor="middle" fill="#6090b0" font-size="7">1.5 s delay →</text>
+      <text x="436" y="102" text-anchor="middle" fill="#6090b0" font-size="7">next question</text>
+
+      <line x1="486" y1="65" x2="506" y2="65" stroke="#4a90d9" stroke-width="1.5" marker-end="url(#a6)"/>
+
+      <!-- 5 Results -->
+      <rect x="508" y="35" width="82" height="60" rx="6" fill="#0f3460" stroke="#2a4a6a" stroke-width="1.5"/>
+      <text x="549" y="56" text-anchor="middle" fill="#4a90d9" font-size="8" font-weight="700">RESULTS</text>
+      <text x="549" y="69" text-anchor="middle" fill="#ffd700" font-size="14" font-weight="800">80%</text>
+      <text x="549" y="83" text-anchor="middle" fill="#aac4e0" font-size="7">Score submitted</text>
+
+      <!-- Loop arrow -->
+      <path d="M 436,110 Q 436,125 314,125 Q 192,125 187,110" stroke="#2a4a6a" stroke-width="1" fill="none" stroke-dasharray="3,2" marker-end="url(#a6)"/>
+      <text x="314" y="133" text-anchor="middle" fill="#4a5070" font-size="7">next question until all done</text>
+    </svg>
+    <p class="diagram-caption">Figure 6.1 — Quiz flow: Start → Question → Submit → Feedback → (repeat) → Final Results.</p>
+  </div>
+
+  <h3>6.3 Question Types &amp; Validation</h3>
+  <table>
+    <tr><th>Type</th><th>Goal</th><th>How to solve</th><th>Tolerance</th></tr>
+    <tr>
+      <td><strong>gearRatio</strong></td>
+      <td>Achieve a target gear ratio (e.g. 3:1)</td>
+      <td>Build chain where driver teeth ÷ output teeth = target ratio</td>
+      <td>±0.1</td>
+    </tr>
+    <tr>
+      <td><strong>rpmOut</strong></td>
+      <td>Achieve target output RPM</td>
+      <td>Connect gears so output RPM matches — use RPM × (T₁÷T₂) formula</td>
+      <td>±0.5 RPM</td>
+    </tr>
+    <tr>
+      <td><strong>torqueOut</strong></td>
+      <td>Achieve target output torque (Nm)</td>
+      <td>Torque = 10 Nm × (output teeth ÷ driver teeth). Larger output gear = more torque</td>
+      <td>±0.5 Nm</td>
+    </tr>
+    <tr>
+      <td><strong>Legacy (combined)</strong></td>
+      <td>Match multiple properties at once</td>
+      <td>Read all required fields (teeth count, module, RPM, ratio) and satisfy each</td>
+      <td>Per-field</td>
+    </tr>
+  </table>
+
+  <div class="two-col" style="margin-top:12px;">
+    <div class="card">
+      <div class="card-title"><div class="card-dot" style="background:#ffd700"></div>Timer</div>
+      Each question gives <strong>3 minutes</strong>. The timer colour changes:
+      <ul class="bullets" style="margin-top:6px; font-size:12px;">
+        <li><span style="color:#34a853">Green</span> — more than 1:30 remaining</li>
+        <li><span style="color:#ff9800">Orange</span> — 30 s to 1:30 remaining</li>
+        <li><span style="color:#e53935">Red</span> — under 30 seconds</li>
+      </ul>
+      If time runs out the answer is auto-submitted as incorrect.
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="card-dot" style="background:#34a853"></div>Results</div>
+      After all questions, a results screen shows:
+      <ul class="bullets" style="margin-top:6px; font-size:12px;">
+        <li>Overall percentage (colour-coded: green &gt;70%, orange 40–70%, red &lt;40%)</li>
+        <li>Per-question ✓/✗ breakdown</li>
+        <li>Submission status (scores sent to server)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="page-number">9</div>
+</div>
+
+<!-- ══ PAGE 10: CHAPTER 7 — QUICK REFERENCE ══ -->
+<div class="page">
+  <div class="header-line"><span>3D Gear Simulator</span><span>Chapter 7 — Quick Reference</span></div>
+  <div class="chapter-header">
+    <div class="chapter-num">CH 07</div>
+    <div>
+      <h2>Quick Reference</h2>
+      <p>Desktop shortcuts, VR controls summary, and gear parameter reference.</p>
+    </div>
+  </div>
+
+  <h3>7.1 Desktop Keyboard &amp; Mouse Shortcuts</h3>
+  <table>
+    <tr><th style="width:35%">Action</th><th>Input</th></tr>
+    <tr><td>Select a gear</td><td><kbd>Left-click</kbd> on gear</td></tr>
+    <tr><td>Deselect</td><td><kbd>Left-click</kbd> on empty canvas</td></tr>
+    <tr><td>Move gear (XY plane)</td><td><kbd>Left-click + drag</kbd> on gear</td></tr>
+    <tr><td>Move gear (Z-axis / depth)</td><td><kbd>Shift</kbd> + <kbd>Left-click + drag</kbd></td></tr>
+    <tr><td>Orbit camera</td><td><kbd>Middle-mouse drag</kbd></td></tr>
+    <tr><td>Zoom camera</td><td><kbd>Scroll wheel</kbd></td></tr>
+    <tr><td>Add gear</td><td>Configure params → click <strong>Add Gear</strong></td></tr>
+    <tr><td>Delete selected gear</td><td>Select gear → click <strong>Delete Selected</strong></td></tr>
+    <tr><td>Clear entire scene</td><td>Click <strong>Reset Scene</strong></td></tr>
+    <tr><td>Start rotation</td><td>Set RPM → click <strong>▶ Play</strong></td></tr>
+    <tr><td>Stop rotation</td><td>Click <strong>⏸ Pause</strong></td></tr>
+    <tr><td>Reset rotation angles</td><td>Click <strong>↺ Reset Rotation</strong></td></tr>
+    <tr><td>Toggle pitch circle</td><td>Tick <strong>Show Pitch Circle</strong></td></tr>
+    <tr><td>Toggle center marker</td><td>Tick <strong>Show Center</strong></td></tr>
+    <tr><td>Toggle dark/light theme</td><td>Click <strong>Toggle Theme</strong></td></tr>
+  </table>
+
+  <h3>7.2 VR Controls Summary</h3>
+  <table>
+    <tr><th style="width:40%">Action</th><th>Gesture</th></tr>
+    <tr><td>Select / activate panel button</td><td>Aim ray (green) at button → pinch</td></tr>
+    <tr><td>Grab and move gear (XY)</td><td>Point at gear → pinch + move hand</td></tr>
+    <tr><td>Move gear along Z-axis</td><td>Primary pinch + other hand squeeze → hands apart/together</td></tr>
+    <tr><td>Release gear (snap check)</td><td>Open pinch (fingers apart &gt;4 cm)</td></tr>
+    <tr><td>Add gear</td><td>Aim at <strong>Add Gear</strong> button → pinch</td></tr>
+    <tr><td>Delete gear</td><td>Select gear → aim at <strong>Delete Selected</strong> → pinch</td></tr>
+    <tr><td>Play simulation</td><td>Aim at <strong>▶ Play</strong> → pinch</td></tr>
+    <tr><td>Adjust RPM / parameters</td><td>Aim at <strong>+</strong> or <strong>−</strong> buttons → pinch</td></tr>
+  </table>
+
+  <h3>7.3 Gear Parameter Reference</h3>
+  <div class="two-col">
+    <table>
+      <tr><th>Parameter</th><th>Default</th><th>Min</th><th>Max</th></tr>
+      <tr><td>Teeth</td><td>20</td><td>8</td><td>100</td></tr>
+      <tr><td>Module (mm)</td><td>2</td><td>0.5</td><td>10</td></tr>
+      <tr><td>Pressure Angle (°)</td><td>20</td><td>14.5</td><td>25</td></tr>
+      <tr><td>Thickness (mm)</td><td>5</td><td>1</td><td>20</td></tr>
+      <tr><td>Bore Diameter (mm)</td><td>5</td><td>1</td><td>20</td></tr>
+      <tr><td>Input RPM</td><td>30</td><td>1</td><td>1000</td></tr>
+    </table>
+    <div>
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-title"><div class="card-dot"></div>Calculated Values</div>
+        <ul class="bullets" style="font-size:11.5px;">
+          <li>Pitch Diameter = Teeth × Module</li>
+          <li>Pitch Radius = Pitch Diameter ÷ 2</li>
+          <li>Addendum = Module</li>
+          <li>Dedendum = 1.25 × Module</li>
+          <li>Outer Radius = Pitch Radius + Addendum</li>
+          <li>Mesh Distance = (PR₁ + PR₂)</li>
+        </ul>
+      </div>
+      <div class="warn-box"><strong>Remember:</strong> Module must match exactly between two gears for them to mesh. This is the most common reason snap fails.</div>
+    </div>
+  </div>
+
+  <hr>
+  <div style="text-align:center; margin-top:24px;">
+    <svg width="90" height="70" viewBox="0 0 90 70" xmlns="http://www.w3.org/2000/svg" style="opacity:0.35;">
+      <circle cx="28" cy="35" r="22" fill="#4a90d9"/>
+      <circle cx="28" cy="35" r="5" fill="#0f3460"/>
+      <rect x="25" y="13" width="6" height="7" rx="2" fill="#4a90d9" transform="rotate(0,28,35)"/>
+      <rect x="25" y="13" width="6" height="7" rx="2" fill="#4a90d9" transform="rotate(30,28,35)"/>
+      <rect x="25" y="13" width="6" height="7" rx="2" fill="#4a90d9" transform="rotate(60,28,35)"/>
+      <rect x="25" y="13" width="6" height="7" rx="2" fill="#4a90d9" transform="rotate(90,28,35)"/>
+      <rect x="25" y="13" width="6" height="7" rx="2" fill="#4a90d9" transform="rotate(120,28,35)"/>
+      <rect x="25" y="13" width="6" height="7" rx="2" fill="#4a90d9" transform="rotate(150,28,35)"/>
+      <rect x="25" y="13" width="6" height="7" rx="2" fill="#4a90d9" transform="rotate(180,28,35)"/>
+      <rect x="25" y="13" width="6" height="7" rx="2" fill="#4a90d9" transform="rotate(210,28,35)"/>
+      <rect x="25" y="13" width="6" height="7" rx="2" fill="#4a90d9" transform="rotate(240,28,35)"/>
+      <rect x="25" y="13" width="6" height="7" rx="2" fill="#4a90d9" transform="rotate(270,28,35)"/>
+      <rect x="25" y="13" width="6" height="7" rx="2" fill="#4a90d9" transform="rotate(300,28,35)"/>
+      <rect x="25" y="13" width="6" height="7" rx="2" fill="#4a90d9" transform="rotate(330,28,35)"/>
+      <circle cx="63" cy="35" r="14" fill="#43a047"/>
+      <circle cx="63" cy="35" r="3" fill="#1a4a1a"/>
+      <rect x="61" y="21" width="4" height="5" rx="1.5" fill="#43a047" transform="rotate(0,63,35)"/>
+      <rect x="61" y="21" width="4" height="5" rx="1.5" fill="#43a047" transform="rotate(40,63,35)"/>
+      <rect x="61" y="21" width="4" height="5" rx="1.5" fill="#43a047" transform="rotate(80,63,35)"/>
+      <rect x="61" y="21" width="4" height="5" rx="1.5" fill="#43a047" transform="rotate(120,63,35)"/>
+      <rect x="61" y="21" width="4" height="5" rx="1.5" fill="#43a047" transform="rotate(160,63,35)"/>
+      <rect x="61" y="21" width="4" height="5" rx="1.5" fill="#43a047" transform="rotate(200,63,35)"/>
+      <rect x="61" y="21" width="4" height="5" rx="1.5" fill="#43a047" transform="rotate(240,63,35)"/>
+      <rect x="61" y="21" width="4" height="5" rx="1.5" fill="#43a047" transform="rotate(280,63,35)"/>
+      <rect x="61" y="21" width="4" height="5" rx="1.5" fill="#43a047" transform="rotate(320,63,35)"/>
+    </svg>
+    <p style="color:#9090b0; font-size:11px; margin-top:6px;">3D Gear Simulator &nbsp;·&nbsp; User Manual</p>
+  </div>
+
+  <div class="page-number">10</div>
+</div>
+
+</body>
+</html>
