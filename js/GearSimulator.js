@@ -7,6 +7,36 @@ import { GearGeometry } from "./GearGeometry.js";
 import { asset } from './assetPath.js';
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
+/**
+ * Button label metrics.
+ *
+ * The canvas used to be sized `width * 400`, which gave a 0.045 m button an
+ * 18-PIXEL canvas while the label was drawn at a fixed 16px — so "-0.5" was
+ * clipped to a stub at both edges, and even "+10" lost its ends. Pixels per
+ * metre is now a real density and the font is derived from the button's height,
+ * so a label renders at the same size whatever the button.
+ */
+const BUTTON_PX_PER_M = 1600;
+/** Label size as a fraction of button height. */
+const BUTTON_FONT_RATIO = 0.44;
+/** Clearance either side of the label, in metres. */
+const BUTTON_PAD_M = 0.011;
+/** Gap between items in a control row, in metres. */
+const ROW_GAP_M = 0.007;
+
+/** One reusable 2D context for measuring text; making one per call is wasteful. */
+let _measureCtx = null;
+function measureTextWidth(text, font) {
+    if (!_measureCtx) _measureCtx = document.createElement("canvas").getContext("2d");
+    _measureCtx.font = font;
+    return _measureCtx.measureText(String(text)).width;
+}
+
+/** Trims a step to something a learner reads: 1, 0.5, 10 — never 0.50. */
+function stepLabel(sign, value) {
+    return `${sign}${Number(Number(value).toFixed(2))}`;
+}
+
         // Hand meshes are VENDORED into public/, not fetched from jsDelivr.
         // three.js defaults this path to cdn.jsdelivr.net and downloads the
         // meshes every session; on a classroom LAN with no route out, hand
@@ -1152,6 +1182,7 @@ export class GearSimulator {
       0.5,
       10,
       0.5,
+      2,
     );
     moduleControl.position.set(0, yPos, 0.01);
     panel.add(moduleControl);
@@ -1164,6 +1195,7 @@ export class GearSimulator {
       14.5,
       25,
       0.5,
+      5,
     );
     pressureControl.position.set(0, yPos, 0.01);
     panel.add(pressureControl);
@@ -1176,6 +1208,7 @@ export class GearSimulator {
       1,
       20,
       1,
+      5,
     );
     thicknessControl.position.set(0, yPos, 0.01);
     panel.add(thicknessControl);
@@ -1188,6 +1221,7 @@ export class GearSimulator {
       1,
       20,
       1,
+      5,
     );
     boreControl.position.set(0, yPos, 0.01);
     panel.add(boreControl);
@@ -1330,48 +1364,47 @@ export class GearSimulator {
       new THREE.PlaneGeometry(0.08, 0.035),
       valueMaterial,
     );
-    valueMesh.position.set(0.02, 0, 0.01);
     valueMesh.name = `${paramName}Value`;
     group.add(valueMesh);
 
-    if (bigStep) {
-      // Layout with big step buttons: -10, -1, [value], +1, +10
-      const decBigBtn = this.create3DButton(0.05, 0.04, `-${bigStep}`, 0x444444, () => {
-        this.adjustGearParam(paramName, -bigStep, min, max, valueMesh);
-      });
-      decBigBtn.position.set(0.10, 0, 0.01);
-      group.add(decBigBtn);
+    // Every step button says how much it steps. The old fallback layout drew a
+    // bare "-" and "+", which tells a learner that something will change but
+    // not by how much — and on a 0.5 step that is the whole question.
+    const stepRow = [];
+    if (bigStep) stepRow.push({ label: stepLabel("-", bigStep), delta: -bigStep, color: 0x444444 });
+    stepRow.push({ label: stepLabel("-", step), delta: -step, color: 0x555555 });
+    const afterValue = [{ label: stepLabel("+", step), delta: step, color: 0x555555 }];
+    if (bigStep) afterValue.push({ label: stepLabel("+", bigStep), delta: bigStep, color: 0x444444 });
 
-      const decBtn = this.create3DButton(0.04, 0.04, `-${step}`, 0x555555, () => {
-        this.adjustGearParam(paramName, -step, min, max, valueMesh);
+    const BTN_H = 0.04;
+    const VALUE_W = 0.08;
+    const made = [...stepRow, ...afterValue].map((spec) => {
+      const btn = this.create3DButton(0, BTN_H, spec.label, spec.color, () => {
+        this.adjustGearParam(paramName, spec.delta, min, max, valueMesh);
       });
-      decBtn.position.set(0.16, 0, 0.01);
-      group.add(decBtn);
+      return { btn, width: btn.userData.fittedWidth };
+    });
 
-      const incBtn = this.create3DButton(0.04, 0.04, `+${step}`, 0x555555, () => {
-        this.adjustGearParam(paramName, step, min, max, valueMesh);
-      });
-      incBtn.position.set(0.22, 0, 0.01);
-      group.add(incBtn);
+    // Laid out from MEASURED widths, right-aligned inside the panel. Fixed
+    // offsets are what let a label overrun its neighbour the moment a button
+    // grew to fit it, so nothing here is a hardcoded x.
+    const ROW_RIGHT = 0.30;
+    const total = made.reduce((sum, m) => sum + m.width, 0)
+      + VALUE_W + ROW_GAP_M * made.length;
+    let x = ROW_RIGHT - total;
+    const place = (object3D, width) => {
+      object3D.position.set(x + width / 2, 0, 0.01);
+      x += width + ROW_GAP_M;
+    };
 
-      const incBigBtn = this.create3DButton(0.05, 0.04, `+${bigStep}`, 0x444444, () => {
-        this.adjustGearParam(paramName, bigStep, min, max, valueMesh);
-      });
-      incBigBtn.position.set(0.28, 0, 0.01);
-      group.add(incBigBtn);
-    } else {
-      // Default layout: -, +
-      const decBtn = this.create3DButton(0.06, 0.04, "-", 0x555555, () => {
-        this.adjustGearParam(paramName, -step, min, max, valueMesh);
-      });
-      decBtn.position.set(0.14, 0, 0.01);
-      group.add(decBtn);
-
-      const incBtn = this.create3DButton(0.06, 0.04, "+", 0x555555, () => {
-        this.adjustGearParam(paramName, step, min, max, valueMesh);
-      });
-      incBtn.position.set(0.22, 0, 0.01);
-      group.add(incBtn);
+    for (let i = 0; i < stepRow.length; i++) {
+      place(made[i].btn, made[i].width);
+      group.add(made[i].btn);
+    }
+    place(valueMesh, VALUE_W);
+    for (let i = stepRow.length; i < made.length; i++) {
+      place(made[i].btn, made[i].width);
+      group.add(made[i].btn);
     }
 
     return group;
@@ -1557,11 +1590,28 @@ export class GearSimulator {
     }
   }
 
+  /**
+   * Width needed to show `label` at this button height, in metres.
+   *
+   * `minWidth` is a floor, not a target — a row of buttons should share a size
+   * where the labels allow it, and grow only where one is longer.
+   */
+  fitButtonWidth(label, height, minWidth = 0) {
+    const fontPx = Math.round(height * BUTTON_PX_PER_M * BUTTON_FONT_RATIO);
+    const textM = measureTextWidth(label, `${fontPx}px Arial`) / BUTTON_PX_PER_M;
+    return Math.max(minWidth, textM + BUTTON_PAD_M * 2);
+  }
+
   create3DButton(width, height, label, color, onClick) {
     const button = new THREE.Group();
 
+    // The width passed in is the MINIMUM. A button that is narrower than its
+    // own label is not a smaller button, it is an unreadable one.
+    const fitted = this.fitButtonWidth(label, height, width);
+    button.userData.fittedWidth = fitted;
+
     // Button background
-    const geometry = new THREE.BoxGeometry(width, height, 0.02);
+    const geometry = new THREE.BoxGeometry(fitted, height, 0.02);
     const material = new THREE.MeshStandardMaterial({
       color: color,
       emissive: 0x000000,
@@ -1571,12 +1621,15 @@ export class GearSimulator {
     const mesh = new THREE.Mesh(geometry, material);
     button.add(mesh);
 
-    // Button label
+    // Button label. The canvas matches the button's own aspect and is mapped
+    // 1:1 onto a plane of the same physical size, so the text is never
+    // stretched — the old 0.9 x 0.7 plane squashed every label non-uniformly.
+    const fontPx = Math.round(height * BUTTON_PX_PER_M * BUTTON_FONT_RATIO);
     const canvas = this.createTextCanvas(
       label,
-      width * 400,
-      height * 400,
-      "16px Arial",
+      Math.round(fitted * BUTTON_PX_PER_M),
+      Math.round(height * BUTTON_PX_PER_M),
+      `${fontPx}px Arial`,
       "#ffffff",
     );
     const texture = new THREE.CanvasTexture(canvas);
@@ -1585,7 +1638,7 @@ export class GearSimulator {
       transparent: true,
     });
     const labelMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(width * 0.9, height * 0.7),
+      new THREE.PlaneGeometry(fitted, height),
       labelMaterial,
     );
     labelMesh.position.z = 0.011;
