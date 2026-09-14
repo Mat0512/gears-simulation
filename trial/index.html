@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Inline empty icon: a page that declares none makes the browser
+         request /favicon.ico at the WEB ROOT, which this module does not own
+         and which 404s. -->
+    <link rel="icon" href="data:,">
+    <title>Simple Machines: Gears — Free Trial — WebXR</title>
+    <style>
+        html, body { margin: 0; padding: 0; height: 100%; background: #05070d; overflow: hidden; }
+        #canvas { display: block; width: 100vw; height: 100vh; }
+
+        /* ── Loading screen ──────────────────────────────────────────────────
+           Inline rather than imported so it paints with the document instead of
+           waiting on an 820 kB bundle. `fixed` rather than `absolute` because the
+           app root here is the body, which is not positioned. The script at the
+           foot of this file fills the bar from the bundle's own bytes;
+           trial/loadingScreen.js divides what is left between the module's real
+           async steps and takes the screen away. */
+        #loading-screen {
+            position: fixed; inset: 0;
+            background: #0A0A1A;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            color: #fff; z-index: 100;
+            padding: 0 1.5rem; box-sizing: border-box; text-align: center;
+            transition: opacity 0.8s ease;
+            font-family: "Segoe UI", system-ui, sans-serif;
+        }
+        /* The screen must end at display:none, not merely opacity:0, or it stays
+           in the layout and silently swallows clicks and XR input. */
+        #loading-screen.px-gone { display: none; }
+
+        #loading-screen h1 {
+            /* 2.5rem is the spec; the clamp engages only on a phone, where the
+               title would otherwise run off both edges. */
+            font-size: clamp(1.5rem, 6.5vw, 2.5rem);
+            font-weight: 300;
+            letter-spacing: 0.2em;
+            margin: 0 0 0.5rem;
+            background: linear-gradient(135deg, #4ADE80, #60A5FA, #F472B6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        #loading-screen p {
+            font-size: 0.9rem;
+            opacity: 0.6;
+            letter-spacing: 0.1em;
+            margin: 0 0 2rem;
+        }
+
+        #loading-bar-wrap {
+            width: 260px; max-width: 100%; height: 3px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        #loading-bar {
+            height: 100%; width: 0%;
+            background: linear-gradient(90deg, #4ADE80, #60A5FA);
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+
+        #loading-screen.error #loading-bar { background: #F87171; }
+
+        #loading-screen .load-error {
+            margin: 1rem 0 0;
+            font-size: 0.85rem;
+            color: #F87171;
+            max-width: 320px;
+            text-align: center;
+            opacity: 1;
+            letter-spacing: 0;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            #loading-screen, #loading-bar { transition-duration: 1ms; }
+        }
+    </style>
+</head>
+<body>
+    <!-- First in the body so it is the first thing painted. -->
+    <div id="loading-screen">
+        <h1>GEARS</h1>
+        <p>Simple machines · Free trial · Teeth, ratio, and the trains they drive</p>
+        <div id="loading-bar-wrap">
+            <div id="loading-bar"></div>
+        </div>
+    </div>
+    <canvas id="canvas"></canvas>
+
+    <!-- A classic script in the document, not part of the bundle, and both of
+         its jobs depend on that.
+
+         It fetches the entry bundle itself so the bar can follow real bytes. The
+         bundle is 85% of the wait on a slow link and it finishes before any
+         module code exists, so a bar wired only to what boot() can see would sit
+         at zero for over a second and then snap to full.
+
+         It is also the watchdog for the bundle never arriving at all — most
+         often a dist served from a path it was not built for. A timer inside a
+         bundle that never loaded can never fire, and that failure used to leave
+         the screen up forever, which reads as "still loading" rather than "this
+         is broken". installLoadingScreen() cancels it. -->
+    <script>
+        (function () {
+            var STALL_MS = 20000;
+            /* What the bundle download is worth. The rest belongs to scene
+               construction and the module's async startup steps, both of which
+               trial/loadingScreen.js drives. */
+            var BUNDLE_SHARE = 80;
+
+            /* The only wording a learner ever sees. A URL, an HTTP status and a
+               note about deploy paths mean nothing to a student in a headset,
+               and the trial is what a prospect meets first — so the reason goes
+               to the console and this goes on the screen. The bar still turns
+               red, because the one thing the screen must not do is keep
+               implying that something is still loading. */
+            var FAIL_TEXT = 'This module could not start. Try reloading.';
+
+            var screenEl = document.getElementById('loading-screen');
+            var barEl = document.getElementById('loading-bar');
+            var failed = false;
+
+            function setLoadProgress(pct) {
+                barEl.style.width = Math.max(0, Math.min(100, pct)) + '%';
+            }
+
+            /** @param reason the diagnosis, for the console — never for the screen. */
+            function showLoadError(reason) {
+                if (failed) return;
+                failed = true;
+                clearTimeout(stall);
+                console.error('[loader] ' + reason);
+                screenEl.classList.add('error');
+                setLoadProgress(100);
+                var p = document.createElement('p');
+                p.className = 'load-error';
+                p.textContent = FAIL_TEXT;
+                screenEl.appendChild(p);
+            }
+
+            window.pxLoadFailed = showLoadError;
+
+            // A failed script does not bubble an error event, but it does reach
+            // a CAPTURE listener on window — which is why this is here and not
+            // an onerror= on the tag. Vite replaces the entry tag at build time
+            // and any attribute on it is lost, so the attribute worked in dev
+            // and silently did nothing in the dist. blob: scripts are skipped
+            // because pxBoot handles those itself, with a fallback.
+            window.addEventListener('error', function (e) {
+                var el = e.target;
+                if (el && el !== window && el.tagName === 'SCRIPT' && el.src
+                    && el.src.indexOf('blob:') !== 0) {
+                    showLoadError('Could not load ' + el.src + ', so nothing ran.');
+                }
+            }, true);
+
+            var stall = setTimeout(function () {
+                showLoadError('The module did not start within ' + STALL_MS / 1000 + 's.');
+            }, STALL_MS);
+
+            // Called by installLoadingScreen(): the bundle loaded and boot() ran.
+            window.pxLoadStarted = function () { clearTimeout(stall); };
+
+            /**
+             * Fetch the entry bundle, filling the bar from its bytes, then run
+             * it. Called only by the BUILT page: trial/vite.config.js rewrites
+             * Vite's own <script src> into a call to this.
+             *
+             * `bytes` is the chunk's UNCOMPRESSED size and has to be passed in.
+             * Over a compressed response content-length is the compressed length
+             * while the reader yields decompressed bytes, so a bar driven by
+             * that ratio finishes at about 380%.
+             */
+            window.pxBoot = function (src, bytes) {
+                var url = new URL(src, document.baseURI).href;
+
+                function run(parts) {
+                    setLoadProgress(BUNDLE_SHARE);
+                    var tag = document.createElement('script');
+                    tag.type = 'module';
+                    tag.src = URL.createObjectURL(new Blob(parts, { type: 'text/javascript' }));
+                    // A page served under a Content-Security-Policy may refuse a
+                    // blob: script. Fall back to the ordinary tag, which reads
+                    // the copy the fetch above just put in the HTTP cache.
+                    tag.onerror = function () {
+                        var plain = document.createElement('script');
+                        plain.type = 'module';
+                        plain.src = url;
+                        document.body.appendChild(plain);
+                    };
+                    document.body.appendChild(tag);
+                }
+
+                fetch(url).then(function (res) {
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    // No streaming body, or no size to measure against: still
+                    // load it, just without a moving bar.
+                    if (!res.body || !bytes) {
+                        return res.blob().then(function (b) { return [b]; });
+                    }
+                    var reader = res.body.getReader();
+                    var parts = [];
+                    var loaded = 0;
+                    return (function pump() {
+                        return reader.read().then(function (r) {
+                            if (r.done) return parts;
+                            parts.push(r.value);
+                            loaded += r.value.length;
+                            setLoadProgress(BUNDLE_SHARE * Math.min(loaded / bytes, 1));
+                            return pump();
+                        });
+                    })();
+                }).then(run).catch(function (e) {
+                    showLoadError('Could not load ' + url + ' (' + e.message + '). This '
+                        + 'build is probably being served from a different path than '
+                        + 'the one it was built for.');
+                });
+            };
+        })();
+    </script>
+    <script type="module" src="./main.js"></script>
+</body>
+</html>

@@ -6,6 +6,8 @@ import { OculusHandModel } from "three/addons/webxr/OculusHandModel.js";
 import { GearGeometry } from "./GearGeometry.js";
 import { asset } from './assetPath.js';
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { isLocked, reportLocked } from './edition/Edition.js';
+import { TRIAL_LIMITS } from './edition/features.js';
 
 /**
  * Button label metrics.
@@ -16,6 +18,15 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
  * metre is now a real density and the font is derived from the button's height,
  * so a label renders at the same size whatever the button.
  */
+/**
+ * The gear's manufacturing spec — everything except TEETH.
+ *
+ * Teeth is deliberately absent: the ratio of teeth sets the ratio of turns, and
+ * that is the whole lesson. A trial that cannot change it cannot demonstrate
+ * the module at all.
+ */
+const SPEC_PARAMS = new Set(["module", "pressureAngle", "thickness", "boreDiameter"]);
+
 const BUTTON_PX_PER_M = 1600;
 /** Label size as a fraction of button height. */
 const BUTTON_FONT_RATIO = 0.44;
@@ -1370,11 +1381,17 @@ export class GearSimulator {
     // Every step button says how much it steps. The old fallback layout drew a
     // bare "-" and "+", which tells a learner that something will change but
     // not by how much — and on a 0.5 step that is the whole question.
+    // A locked control is grey from the start. A lit button that refuses to
+    // work reads as a broken panel; a grey one reads as a paid feature.
+    const locked = SPEC_PARAMS.has(paramName) && isLocked("gears.spec");
+    const bigColor = locked ? 0x2b2b33 : 0x444444;
+    const stepColor = locked ? 0x33333c : 0x555555;
+
     const stepRow = [];
-    if (bigStep) stepRow.push({ label: stepLabel("-", bigStep), delta: -bigStep, color: 0x444444 });
-    stepRow.push({ label: stepLabel("-", step), delta: -step, color: 0x555555 });
-    const afterValue = [{ label: stepLabel("+", step), delta: step, color: 0x555555 }];
-    if (bigStep) afterValue.push({ label: stepLabel("+", bigStep), delta: bigStep, color: 0x444444 });
+    if (bigStep) stepRow.push({ label: stepLabel("-", bigStep), delta: -bigStep, color: bigColor });
+    stepRow.push({ label: stepLabel("-", step), delta: -step, color: stepColor });
+    const afterValue = [{ label: stepLabel("+", step), delta: step, color: stepColor }];
+    if (bigStep) afterValue.push({ label: stepLabel("+", bigStep), delta: bigStep, color: bigColor });
 
     const BTN_H = 0.04;
     const VALUE_W = 0.08;
@@ -1411,6 +1428,13 @@ export class GearSimulator {
   }
 
   adjustGearParam(paramName, delta, min, max, valueMesh) {
+    // One choke point for all five controls. Teeth always passes — see
+    // SPEC_PARAMS for why.
+    if (SPEC_PARAMS.has(paramName) && isLocked("gears.spec")) {
+      reportLocked("gears.spec");
+      return;
+    }
+
     if (!this.selectedGear) {
       this.debugLog(`No gear selected`);
       return;
@@ -2847,6 +2871,14 @@ export class GearSimulator {
   }
 
   addGear() {
+    // Gated on the COUNT, not on the button: gears are added from the 3D panel,
+    // from the DOM control, and once at start-up, and a gate on each is a gate
+    // someone forgets.
+    if (isLocked("gears.count") && this.gears.length >= TRIAL_LIMITS.maxGears) {
+      reportLocked("gears.count");
+      return;
+    }
+
     const params = {
       teeth: parseInt(document.getElementById("param-teeth").value) || 20,
       module: parseFloat(document.getElementById("param-module").value) || 2,
