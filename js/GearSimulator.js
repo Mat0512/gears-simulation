@@ -8,6 +8,7 @@ import { asset } from './assetPath.js';
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { isLocked, reportLocked } from './edition/Edition.js';
 import { TRIAL_LIMITS } from './edition/features.js';
+import { COLOR, INK, ROLE, PANEL, EDGE, CONTENT_W, GAP, LAYOUT, centreForTop } from './xr/theme.js';
 
 /**
  * Button label metrics.
@@ -1043,10 +1044,12 @@ export class GearSimulator {
     // Title
     const titleCanvas = this.createTextCanvas(
       "Gear Controls",
-      200,
-      30,
-      "18px Arial",
-      "#4a90d9",
+      Math.round(CONTENT_W * 1600),
+      Math.round(0.06 * 1600),
+      "bold 44px Arial",
+      INK.accent,
+      false,
+      "left",
     );
     const titleTexture = new THREE.CanvasTexture(titleCanvas);
     const titleMaterial = new THREE.MeshBasicMaterial({
@@ -1054,7 +1057,7 @@ export class GearSimulator {
       transparent: true,
     });
     const titleMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.4, 0.06),
+      new THREE.PlaneGeometry(CONTENT_W, 0.06),
       titleMaterial,
     );
     titleMesh.position.set(0, 0.58, 0.01);
@@ -1066,10 +1069,10 @@ export class GearSimulator {
     const rowSpacing = 0.06;
 
     const addGearBtn = this.create3DButton(
-      0.45,
+      CONTENT_W,
       0.05,
       "Add Gear",
-      0x4a90d9,
+      ROLE.primary,
       () => this.addGear(),
     );
     addGearBtn.position.set(0, yPos, 0.01);
@@ -1077,10 +1080,10 @@ export class GearSimulator {
 
     yPos -= rowSpacing;
     const deleteBtn = this.create3DButton(
-      0.45,
+      CONTENT_W,
       0.05,
       "Delete Selected",
-      0xf44336,
+      ROLE.danger,
       () => this.deleteSelectedGear(),
     );
     deleteBtn.position.set(0, yPos, 0.01);
@@ -1088,10 +1091,10 @@ export class GearSimulator {
 
     yPos -= rowSpacing;
     const resetBtn = this.create3DButton(
-      0.45,
+      CONTENT_W,
       0.05,
       "Reset Scene",
-      0xff9800,
+      ROLE.warning,
       () => this.resetScene(),
     );
     resetBtn.position.set(0, yPos, 0.01);
@@ -1101,10 +1104,12 @@ export class GearSimulator {
     yPos -= buttonSpacing + 0.02;
     const animLabel = this.createTextCanvas(
       "Animation",
-      150,
-      24,
-      "14px Arial",
-      "#a0a0a0",
+      Math.round(CONTENT_W * 1600),
+      Math.round(0.04 * 1600),
+      "bold 30px Arial",
+      INK.secondary,
+      false,
+      "left",
     );
     const animTexture = new THREE.CanvasTexture(animLabel);
     const animMaterial = new THREE.MeshBasicMaterial({
@@ -1112,7 +1117,7 @@ export class GearSimulator {
       transparent: true,
     });
     const animMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.3, 0.04),
+      new THREE.PlaneGeometry(CONTENT_W, 0.04),
       animMaterial,
     );
     animMesh.position.set(0, yPos, 0.01);
@@ -1120,36 +1125,39 @@ export class GearSimulator {
 
     // Play/Pause/Reset buttons in a row
     yPos -= rowSpacing;
-    const playBtn = this.create3DButton(0.13, 0.05, "Play", 0x4caf50, () =>
+    const ANIM_W = (CONTENT_W - GAP * 2) / 3;
+    const playBtn = this.create3DButton(ANIM_W, 0.05, "Play", ROLE.success, () =>
       this.play(),
     );
-    playBtn.position.set(-0.15, yPos, 0.01);
+    playBtn.position.set(-EDGE + ANIM_W / 2, yPos, 0.01);
     panel.add(playBtn);
 
-    const pauseBtn = this.create3DButton(0.13, 0.05, "Pause", 0xff9800, () =>
+    const pauseBtn = this.create3DButton(ANIM_W, 0.05, "Pause", ROLE.warning, () =>
       this.pause(),
     );
     pauseBtn.position.set(0, yPos, 0.01);
     panel.add(pauseBtn);
 
     const resetAnimBtn = this.create3DButton(
-      0.13,
+      ANIM_W,
       0.05,
       "Reset",
-      0x9e9e9e,
+      ROLE.neutral,
       () => this.resetAnimation(),
     );
-    resetAnimBtn.position.set(0.15, yPos, 0.01);
+    resetAnimBtn.position.set(EDGE - ANIM_W / 2, yPos, 0.01);
     panel.add(resetAnimBtn);
 
     // RPM Control section
     yPos -= buttonSpacing + 0.02;
     const rpmLabel = this.createTextCanvas(
       "Input RPM",
-      150,
-      24,
-      "14px Arial",
-      "#a0a0a0",
+      Math.round(CONTENT_W * 1600),
+      Math.round(0.04 * 1600),
+      "bold 30px Arial",
+      INK.secondary,
+      false,
+      "left",
     );
     const rpmTexture = new THREE.CanvasTexture(rpmLabel);
     const rpmMaterial = new THREE.MeshBasicMaterial({
@@ -1157,7 +1165,7 @@ export class GearSimulator {
       transparent: true,
     });
     const rpmMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.3, 0.04),
+      new THREE.PlaneGeometry(CONTENT_W, 0.04),
       rpmMaterial,
     );
     rpmMesh.position.set(0, yPos, 0.01);
@@ -1183,10 +1191,12 @@ export class GearSimulator {
     yPos -= buttonSpacing + 0.02;
     const paramsLabel = this.createTextCanvas(
       "Gear Parameters",
-      180,
-      24,
-      "14px Arial",
-      "#a0a0a0",
+      Math.round(CONTENT_W * 1600),
+      Math.round(0.04 * 1600),
+      "bold 30px Arial",
+      INK.secondary,
+      false,
+      "left",
     );
     const paramsTexture = new THREE.CanvasTexture(paramsLabel);
     const paramsMaterial = new THREE.MeshBasicMaterial({
@@ -1194,7 +1204,7 @@ export class GearSimulator {
       transparent: true,
     });
     const paramsMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.35, 0.04),
+      new THREE.PlaneGeometry(CONTENT_W, 0.04),
       paramsMaterial,
     );
     paramsMesh.position.set(0, yPos, 0.01);
@@ -1259,8 +1269,11 @@ export class GearSimulator {
     panel.add(boreControl);
 
     // Position panel to the left of user
-    panel.position.set(-1, 1.2, -0.5);
-    panel.rotation.y = Math.PI / 6; // 30 degrees
+    // Mirrored with the info panel, and its TOP on the shared line at eye
+    // height. It was x=-1.0 turned 30 degrees against a right panel at x=+0.8
+    // turned 22.5, so neither the spacing nor the toe-in matched.
+    panel.position.set(-LAYOUT.sideX, centreForTop(PANEL.height), LAYOUT.z);
+    panel.rotation.y = LAYOUT.toeIn;
 
     return panel;
   }
@@ -1286,60 +1299,44 @@ export class GearSimulator {
       new THREE.PlaneGeometry(0.12, 0.04),
       valueMaterial,
     );
-    valueMesh.position.set(0, 0, 0.01);
     valueMesh.name = `${name}Value`;
     group.add(valueMesh);
 
-    if (bigStep) {
-      // Layout with big step buttons: -10, -1, [value], +1, +10
-      const decBigBtn = this.create3DButton(0.055, 0.045, `-${bigStep}`, 0x555555, () => {
-        const newVal = Math.max(min, getValue() - bigStep);
-        setValue(newVal);
-        this.updateValueDisplay(valueMesh, newVal);
-      });
-      decBigBtn.position.set(-0.19, 0, 0.01);
-      group.add(decBigBtn);
+    // Same grid as the parameter rows: the whole strip spans the panel's
+    // content width, so this row lines up with every other one. The value takes
+    // whatever the buttons do not, and every button says how much it steps.
+    const specs = [];
+    if (bigStep) specs.push({ label: stepLabel("-", bigStep), delta: -bigStep, color: COLOR.bgSecondary });
+    specs.push({ label: stepLabel("-", step), delta: -step, color: ROLE.neutral });
+    const afterValue = [{ label: stepLabel("+", step), delta: step, color: ROLE.neutral }];
+    if (bigStep) afterValue.push({ label: stepLabel("+", bigStep), delta: bigStep, color: COLOR.bgSecondary });
 
-      const decBtn = this.create3DButton(0.045, 0.045, `-${step}`, 0x666666, () => {
-        const newVal = Math.max(min, getValue() - step);
-        setValue(newVal);
-        this.updateValueDisplay(valueMesh, newVal);
+    const BTN_H = 0.045;
+    const made = [...specs, ...afterValue].map((spec) => {
+      const btn = this.create3DButton(0, BTN_H, spec.label, spec.color, () => {
+        const next = Math.min(max, Math.max(min, getValue() + spec.delta));
+        setValue(next);
+        this.updateValueDisplay(valueMesh, next);
       });
-      decBtn.position.set(-0.12, 0, 0.01);
-      group.add(decBtn);
+      return { btn, width: btn.userData.fittedWidth };
+    });
 
-      const incBtn = this.create3DButton(0.045, 0.045, `+${step}`, 0x666666, () => {
-        const newVal = Math.min(max, getValue() + step);
-        setValue(newVal);
-        this.updateValueDisplay(valueMesh, newVal);
-      });
-      incBtn.position.set(0.12, 0, 0.01);
-      group.add(incBtn);
+    const buttonsW = made.reduce((sum, m) => sum + m.width, 0);
+    const valueW = CONTENT_W - buttonsW - GAP * made.length;
+    let x = -EDGE;
+    const place = (object3D, width) => {
+      object3D.position.set(x + width / 2, 0, 0.01);
+      x += width + GAP;
+    };
 
-      const incBigBtn = this.create3DButton(0.055, 0.045, `+${bigStep}`, 0x555555, () => {
-        const newVal = Math.min(max, getValue() + bigStep);
-        setValue(newVal);
-        this.updateValueDisplay(valueMesh, newVal);
-      });
-      incBigBtn.position.set(0.19, 0, 0.01);
-      group.add(incBigBtn);
-    } else {
-      // Default layout: -, +
-      const decBtn = this.create3DButton(0.08, 0.045, "-", 0x666666, () => {
-        const newVal = Math.max(min, getValue() - step);
-        setValue(newVal);
-        this.updateValueDisplay(valueMesh, newVal);
-      });
-      decBtn.position.set(-0.15, 0, 0.01);
-      group.add(decBtn);
-
-      const incBtn = this.create3DButton(0.08, 0.045, "+", 0x666666, () => {
-        const newVal = Math.min(max, getValue() + step);
-        setValue(newVal);
-        this.updateValueDisplay(valueMesh, newVal);
-      });
-      incBtn.position.set(0.15, 0, 0.01);
-      group.add(incBtn);
+    for (let i = 0; i < specs.length; i++) {
+      place(made[i].btn, made[i].width);
+      group.add(made[i].btn);
+    }
+    place(valueMesh, valueW);
+    for (let i = specs.length; i < made.length; i++) {
+      place(made[i].btn, made[i].width);
+      group.add(made[i].btn);
     }
 
     return group;
@@ -1366,7 +1363,8 @@ export class GearSimulator {
       new THREE.PlaneGeometry(0.12, 0.035),
       labelMaterial,
     );
-    labelMesh.position.set(-0.17, 0, 0.01);
+    // Left edge on the panel's content line, like every other row.
+    labelMesh.position.set(-EDGE + 0.12 / 2, 0, 0.01);
     group.add(labelMesh);
 
     // Value display
@@ -1405,8 +1403,8 @@ export class GearSimulator {
     // A locked control is grey from the start. A lit button that refuses to
     // work reads as a broken panel; a grey one reads as a paid feature.
     const locked = SPEC_PARAMS.has(paramName) && isLocked("gears.spec");
-    const bigColor = locked ? 0x2b2b33 : 0x444444;
-    const stepColor = locked ? 0x33333c : 0x555555;
+    const bigColor = locked ? ROLE.locked : COLOR.bgSecondary;
+    const stepColor = locked ? ROLE.locked : ROLE.neutral;
 
     const stepRow = [];
     if (bigStep) stepRow.push({ label: stepLabel("-", bigStep), delta: -bigStep, color: bigColor });
@@ -1426,7 +1424,9 @@ export class GearSimulator {
     // Laid out from MEASURED widths, right-aligned inside the panel. Fixed
     // offsets are what let a label overrun its neighbour the moment a button
     // grew to fit it, so nothing here is a hardcoded x.
-    const ROW_RIGHT = 0.30;
+    // The panel's own right edge, so the step row ends where the full-width
+    // buttons above it end.
+    const ROW_RIGHT = EDGE;
     const total = made.reduce((sum, m) => sum + m.width, 0)
       + VALUE_W + ROW_GAP_M * made.length;
     let x = ROW_RIGHT - total;
@@ -1571,8 +1571,10 @@ export class GearSimulator {
     panel.add(infoMesh);
 
     // Position panel to the right of user
-    panel.position.set(0.8, 1.2, -0.5);
-    panel.rotation.y = -Math.PI / 8; // -30 degrees
+    // The mirror of the controls panel. The old comment here said -30 degrees
+    // while the code said -Math.PI/8, which is -22.5.
+    panel.position.set(LAYOUT.sideX, centreForTop(0.5), LAYOUT.z);
+    panel.rotation.y = -LAYOUT.toeIn;
 
     return panel;
   }
@@ -1593,27 +1595,28 @@ export class GearSimulator {
     panel.add(background);
 
     // Quick action buttons
-    const playBtn = this.create3DButton(0.15, 0.08, "Play", 0x4caf50, () =>
+    const playBtn = this.create3DButton(0.15, 0.08, "Play", ROLE.success, () =>
       this.play(),
     );
     playBtn.position.set(-0.2, 0, 0.01);
     panel.add(playBtn);
 
-    const pauseBtn = this.create3DButton(0.15, 0.08, "Pause", 0xff9800, () =>
+    const pauseBtn = this.create3DButton(0.15, 0.08, "Pause", ROLE.warning, () =>
       this.pause(),
     );
     pauseBtn.position.set(0, 0, 0.01);
     panel.add(pauseBtn);
 
-    const resetBtn = this.create3DButton(0.15, 0.08, "Reset", 0x9e9e9e, () =>
+    const resetBtn = this.create3DButton(0.15, 0.08, "Reset", ROLE.neutral, () =>
       this.resetAnimation(),
     );
     resetBtn.position.set(0.2, 0, 0.01);
     panel.add(resetBtn);
 
     // Position panel below, in front of user
-    panel.position.set(0, 0.7, -0.5);
-    panel.rotation.x = - Math.PI / 8; // tilted up toward user
+    // Centred under the gear scene, leaning back toward the user.
+    panel.position.set(0, LAYOUT.stripY, LAYOUT.stripZ);
+    panel.rotation.x = -LAYOUT.stripTilt;
 
     return panel;
   }
@@ -1697,7 +1700,7 @@ export class GearSimulator {
     return button;
   }
 
-  createTextCanvas(text, width, height, font, color, multiline = false) {
+  createTextCanvas(text, width, height, font, color, multiline = false, align = "center") {
     const canvas = document.createElement("canvas");
     canvas.width = width;
     canvas.height = height;
@@ -1706,18 +1709,22 @@ export class GearSimulator {
     ctx.clearRect(0, 0, width, height);
     ctx.font = font;
     ctx.fillStyle = color;
-    ctx.textAlign = "center";
+    ctx.textAlign = align;
     ctx.textBaseline = "middle";
+    // Where the anchor sits for each alignment. Left-aligned text is inset by
+    // the same fraction the panel pads its content, so a header lines up with
+    // the rows under it rather than touching the canvas edge.
+    const anchorX = align === "left" ? Math.round(width * 0.02) : width / 2;
 
     if (multiline) {
       const lines = text.split("\n");
       const lineHeight = parseInt(font) * 1.4;
       const startY = (height - lines.length * lineHeight) / 2 + lineHeight / 2;
       lines.forEach((line, i) => {
-        ctx.fillText(line, width / 2, startY + i * lineHeight);
+        ctx.fillText(line, anchorX, startY + i * lineHeight);
       });
     } else {
-      ctx.fillText(text, width / 2, height / 2);
+      ctx.fillText(text, anchorX, height / 2);
     }
 
     return canvas;
