@@ -131,6 +131,23 @@ stylesheet cannot be read from a shader. **If one moves, move the other.**
 (primary, neutral, success, warning, danger, locked), so the choice is never
 made by eye.
 
+**Type comes from the workspace, not from this module.** `PX_PER_M` is 1024,
+which is what physics, particle, light and periodic-table all use — at gears'
+old 1600 a "30px" font here and a "30px" font there were different sizes in the
+world. `TYPE` mirrors their scale (title 36 shrinking to 18, buttons 30 to 15,
+body 30) in bold sans-serif; Arial regular at this size is thin to read at an
+angle. `fitText()` shrinks a label that will not fit rather than letting it
+clip, because a clipped label is worse than a smaller one — the learner cannot
+tell what it lost.
+
+**The panel's height is derived, never chosen.** `createFlow()` lays rows out
+from the top edge downward and `PANEL.height` is what they come to plus padding.
+The old layout began at a hand-picked `yPos = 0.48` and stepped by a mixture of
+`rowSpacing`, `buttonSpacing + 0.02` and bare literals, none of it tied to the
+panel — which is how the content came to stop at y=-0.355 against a bottom edge
+at -0.65, leaving almost a quarter of the panel empty and making the whole thing
+read as oversized. It is 0.95 now, 27% shorter, with 5mm of slack.
+
 **One content width per panel.** `EDGE`/`CONTENT_W` is the panel minus its
 padding, and every row spans exactly it — the full-width buttons, the animation
 trio, the RPM stepper, the parameter rows. They used to end at 0.225, 0.215 and

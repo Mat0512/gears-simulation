@@ -8,7 +8,8 @@ import { asset } from './assetPath.js';
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { isLocked, reportLocked } from './edition/Edition.js';
 import { TRIAL_LIMITS } from './edition/features.js';
-import { COLOR, INK, ROLE, PANEL, EDGE, CONTENT_W, GAP, LAYOUT, centreForTop } from './xr/theme.js';
+import { COLOR, INK, ROLE, PANEL, ROW, EDGE, CONTENT_W, GAP, LAYOUT, centreForTop,
+         PX_PER_M, TYPE, FONT_STACK, createFlow, fitText } from './xr/theme.js';
 import { makePanelGround, layerPanel } from './xr/panelLayer.js';
 
 /**
@@ -29,9 +30,6 @@ import { makePanelGround, layerPanel } from './xr/panelLayer.js';
  */
 const SPEC_PARAMS = new Set(["module", "pressureAngle", "thickness", "boreDiameter"]);
 
-const BUTTON_PX_PER_M = 1600;
-/** Label size as a fraction of button height. */
-const BUTTON_FONT_RATIO = 0.44;
 /** Clearance either side of the label, in metres. */
 const BUTTON_PAD_M = 0.011;
 /** Gap between items in a control row, in metres. */
@@ -60,10 +58,14 @@ function bindControl(id, event, handler) {
 
 /** One reusable 2D context for measuring text; making one per call is wasteful. */
 let _measureCtx = null;
-function measureTextWidth(text, font) {
+function measureCtx() {
     if (!_measureCtx) _measureCtx = document.createElement("canvas").getContext("2d");
-    _measureCtx.font = font;
-    return _measureCtx.measureText(String(text)).width;
+    return _measureCtx;
+}
+function measureTextWidth(text, font) {
+    const ctx = measureCtx();
+    ctx.font = font;
+    return ctx.measureText(String(text)).width;
 }
 
 /** Trims a step to something a learner reads: 1, 0.5, 10 — never 0.50. */
@@ -1028,6 +1030,13 @@ export class GearSimulator {
   }
 
   createControlsPanel() {
+    // Rows are laid out from the top edge downward, so the panel's height is a
+    // consequence of its content rather than a number someone picked. The old
+    // flow started at a hand-chosen 0.48 and stepped by a mix of rowSpacing,
+    // buttonSpacing + 0.02 and bare literals — which is how the content came to
+    // stop 0.3 m short of the bottom edge.
+    const flow = createFlow();
+
     const panel = new THREE.Group();
     panel.name = "controlsPanel";
     // Stacking rules on, before anything is added to it.
@@ -1035,15 +1044,15 @@ export class GearSimulator {
 
     // Panel background (taller to accommodate new controls)
     // Opaque on purpose — see js/xr/panelLayer.js.
-    const background = makePanelGround(0.65, 1.3, 0x0f3460);
+    const background = makePanelGround(PANEL.width, PANEL.height, COLOR.bgPanel);
     panel.add(background);
 
     // Title
     const titleCanvas = this.createTextCanvas(
       "Gear Controls",
-      Math.round(CONTENT_W * 1600),
-      Math.round(0.06 * 1600),
-      "bold 44px Arial",
+      Math.round(CONTENT_W * PX_PER_M),
+      Math.round(ROW.title * PX_PER_M),
+      `bold ${TYPE.title.preferred}px ${FONT_STACK}`,
       INK.accent,
       false,
       "left",
@@ -1057,13 +1066,11 @@ export class GearSimulator {
       new THREE.PlaneGeometry(CONTENT_W, 0.06),
       titleMaterial,
     );
-    titleMesh.position.set(0, 0.58, 0.01);
+    titleMesh.position.set(0, flow.row(ROW.title), 0.01);
     panel.add(titleMesh);
 
     // Gear Management buttons
-    let yPos = 0.48;
-    const buttonSpacing = 0.07;
-    const rowSpacing = 0.06;
+    let yPos = flow.row(ROW.button, ROW.gap);
 
     const addGearBtn = this.create3DButton(
       CONTENT_W,
@@ -1075,7 +1082,7 @@ export class GearSimulator {
     addGearBtn.position.set(0, yPos, 0.01);
     panel.add(addGearBtn);
 
-    yPos -= rowSpacing;
+    yPos = flow.row(ROW.button, ROW.gap);
     const deleteBtn = this.create3DButton(
       CONTENT_W,
       0.05,
@@ -1086,7 +1093,7 @@ export class GearSimulator {
     deleteBtn.position.set(0, yPos, 0.01);
     panel.add(deleteBtn);
 
-    yPos -= rowSpacing;
+    yPos = flow.row(ROW.button, ROW.gap);
     const resetBtn = this.create3DButton(
       CONTENT_W,
       0.05,
@@ -1098,12 +1105,12 @@ export class GearSimulator {
     panel.add(resetBtn);
 
     // Animation section label
-    yPos -= buttonSpacing + 0.02;
+    yPos = flow.row(ROW.sectionLabel, ROW.sectionGap);
     const animLabel = this.createTextCanvas(
       "Animation",
-      Math.round(CONTENT_W * 1600),
-      Math.round(0.04 * 1600),
-      "bold 30px Arial",
+      Math.round(CONTENT_W * PX_PER_M),
+      Math.round(ROW.sectionLabel * PX_PER_M),
+      `bold ${TYPE.sectionLabel}px ${FONT_STACK}`,
       INK.secondary,
       false,
       "left",
@@ -1121,7 +1128,7 @@ export class GearSimulator {
     panel.add(animMesh);
 
     // Play/Pause/Reset buttons in a row
-    yPos -= rowSpacing;
+    yPos = flow.row(ROW.control, ROW.gap);
     const ANIM_W = (CONTENT_W - GAP * 2) / 3;
     const playBtn = this.create3DButton(ANIM_W, 0.05, "Play", ROLE.success, () =>
       this.play(),
@@ -1146,12 +1153,12 @@ export class GearSimulator {
     panel.add(resetAnimBtn);
 
     // RPM Control section
-    yPos -= buttonSpacing + 0.02;
+    yPos = flow.row(ROW.sectionLabel, ROW.sectionGap);
     const rpmLabel = this.createTextCanvas(
       "Input RPM",
-      Math.round(CONTENT_W * 1600),
-      Math.round(0.04 * 1600),
-      "bold 30px Arial",
+      Math.round(CONTENT_W * PX_PER_M),
+      Math.round(ROW.sectionLabel * PX_PER_M),
+      `bold ${TYPE.sectionLabel}px ${FONT_STACK}`,
       INK.secondary,
       false,
       "left",
@@ -1168,7 +1175,7 @@ export class GearSimulator {
     rpmMesh.position.set(0, yPos, 0.01);
     panel.add(rpmMesh);
 
-    yPos -= rowSpacing;
+    yPos = flow.row(ROW.control, ROW.gap);
     const rpmControl = this.createValueControl(
       "rpm",
       () => this.inputRPM,
@@ -1185,12 +1192,12 @@ export class GearSimulator {
     panel.add(rpmControl);
 
     // Gear Parameters section
-    yPos -= buttonSpacing + 0.02;
+    yPos = flow.row(ROW.sectionLabel, ROW.sectionGap);
     const paramsLabel = this.createTextCanvas(
       "Gear Parameters",
-      Math.round(CONTENT_W * 1600),
-      Math.round(0.04 * 1600),
-      "bold 30px Arial",
+      Math.round(CONTENT_W * PX_PER_M),
+      Math.round(ROW.sectionLabel * PX_PER_M),
+      `bold ${TYPE.sectionLabel}px ${FONT_STACK}`,
       INK.secondary,
       false,
       "left",
@@ -1208,13 +1215,13 @@ export class GearSimulator {
     panel.add(paramsMesh);
 
     // Teeth control
-    yPos -= rowSpacing;
+    yPos = flow.row(ROW.control, ROW.gap);
     const teethControl = this.createParamControl("Teeth", "teeth", 8, 100, 1, 10);
     teethControl.position.set(0, yPos, 0.01);
     panel.add(teethControl);
 
     // Module control
-    yPos -= rowSpacing;
+    yPos = flow.row(ROW.control, ROW.gap);
     const moduleControl = this.createParamControl(
       "Module",
       "module",
@@ -1227,7 +1234,7 @@ export class GearSimulator {
     panel.add(moduleControl);
 
     // Pressure Angle control
-    yPos -= rowSpacing;
+    yPos = flow.row(ROW.control, ROW.gap);
     const pressureControl = this.createParamControl(
       "P.Angle",
       "pressureAngle",
@@ -1240,7 +1247,7 @@ export class GearSimulator {
     panel.add(pressureControl);
 
     // Thickness control
-    yPos -= rowSpacing;
+    yPos = flow.row(ROW.control, ROW.gap);
     const thicknessControl = this.createParamControl(
       "Thick",
       "thickness",
@@ -1253,7 +1260,7 @@ export class GearSimulator {
     panel.add(thicknessControl);
 
     // Bore Diameter control
-    yPos -= rowSpacing;
+    yPos = flow.row(ROW.control, ROW.gap);
     const boreControl = this.createParamControl(
       "Bore",
       "boreDiameter",
@@ -1282,18 +1289,21 @@ export class GearSimulator {
     // Value display
     const valueCanvas = this.createTextCanvas(
       getValue().toString(),
-      80,
-      24,
-      "14px Arial",
-      "#ffffff",
+      Math.round(0.33 * PX_PER_M),
+      Math.round(ROW.control * PX_PER_M),
+      `bold ${TYPE.value}px ${FONT_STACK}`,
+      INK.primary,
     );
     const valueTexture = new THREE.CanvasTexture(valueCanvas);
     const valueMaterial = new THREE.MeshBasicMaterial({
       map: valueTexture,
       transparent: true,
     });
+    // Width is replaced once the buttons are measured — the row gives the
+    // value whatever they leave, and a 0.12 plane sitting in a 0.33 slot would
+    // render the number small and off to one side of its own space.
     const valueMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.12, 0.04),
+      new THREE.PlaneGeometry(0.12, ROW.control),
       valueMaterial,
     );
     valueMesh.name = `${name}Value`;
@@ -1320,6 +1330,8 @@ export class GearSimulator {
 
     const buttonsW = made.reduce((sum, m) => sum + m.width, 0);
     const valueW = CONTENT_W - buttonsW - GAP * made.length;
+    valueMesh.geometry.dispose();
+    valueMesh.geometry = new THREE.PlaneGeometry(valueW, ROW.control);
     let x = -EDGE;
     const place = (object3D, width) => {
       object3D.position.set(x + width / 2, 0, 0.01);
@@ -1346,10 +1358,12 @@ export class GearSimulator {
     // Label
     const labelCanvas = this.createTextCanvas(
       label,
-      80,
-      24,
-      "12px Arial",
-      "#a0a0a0",
+      Math.round(0.12 * PX_PER_M),
+      Math.round(0.035 * PX_PER_M),
+      `bold ${TYPE.sectionLabel}px ${FONT_STACK}`,
+      INK.secondary,
+      false,
+      "left",
     );
     const labelTexture = new THREE.CanvasTexture(labelCanvas);
     const labelMaterial = new THREE.MeshBasicMaterial({
@@ -1377,10 +1391,10 @@ export class GearSimulator {
 
     const valueCanvas = this.createTextCanvas(
       getParamValue().toString(),
-      60,
-      24,
-      "12px Arial",
-      "#ffffff",
+      Math.round(0.08 * PX_PER_M),
+      Math.round(0.035 * PX_PER_M),
+      `bold ${TYPE.value}px ${FONT_STACK}`,
+      INK.primary,
     );
     const valueTexture = new THREE.CanvasTexture(valueCanvas);
     const valueMaterial = new THREE.MeshBasicMaterial({
@@ -1500,10 +1514,10 @@ export class GearSimulator {
 
     const canvas = this.createTextCanvas(
       displayValue,
-      80,
-      24,
-      "12px Arial",
-      "#ffffff",
+      Math.round(0.12 * PX_PER_M),
+      Math.round(0.035 * PX_PER_M),
+      `bold ${TYPE.value}px ${FONT_STACK}`,
+      INK.primary,
     );
     mesh.material.map = new THREE.CanvasTexture(canvas);
     mesh.material.map.needsUpdate = true;
@@ -1530,9 +1544,9 @@ export class GearSimulator {
     // Title
     const titleCanvas = this.createTextCanvas(
       "Gear Info",
-      Math.round(INFO_CONTENT * 1600),
-      Math.round(0.06 * 1600),
-      "bold 44px Arial",
+      Math.round(INFO_CONTENT * PX_PER_M),
+      Math.round(ROW.title * PX_PER_M),
+      `bold ${TYPE.title.preferred}px ${FONT_STACK}`,
       INK.accent,
       false,
       "left",
@@ -1552,11 +1566,12 @@ export class GearSimulator {
     // Info content placeholder (will be updated dynamically)
     const infoCanvas = this.createTextCanvas(
       "Select a gear\nto view info",
-      160,
-      150,
-      "14px Arial",
-      "#a0a0a0",
+      Math.round(INFO_CONTENT * PX_PER_M),
+      Math.round(0.3 * PX_PER_M),
+      `bold ${TYPE.body}px ${FONT_STACK}`,
+      INK.secondary,
       true,
+      "left",
     );
     const infoTexture = new THREE.CanvasTexture(infoCanvas);
     const infoMaterial = new THREE.MeshBasicMaterial({
@@ -1642,8 +1657,11 @@ export class GearSimulator {
    * where the labels allow it, and grow only where one is longer.
    */
   fitButtonWidth(label, height, minWidth = 0) {
-    const fontPx = Math.round(height * BUTTON_PX_PER_M * BUTTON_FONT_RATIO);
-    const textM = measureTextWidth(label, `${fontPx}px Arial`) / BUTTON_PX_PER_M;
+    // Measured at the PREFERRED size, so a button given room shows its label at
+    // full size. One squeezed by its caller shrinks the type instead — see
+    // fitText in create3DButton.
+    const textM = measureTextWidth(
+      label, `bold ${TYPE.button.preferred}px ${FONT_STACK}`) / PX_PER_M;
     return Math.max(minWidth, textM + BUTTON_PAD_M * 2);
   }
 
@@ -1669,13 +1687,18 @@ export class GearSimulator {
     // Button label. The canvas matches the button's own aspect and is mapped
     // 1:1 onto a plane of the same physical size, so the text is never
     // stretched — the old 0.9 x 0.7 plane squashed every label non-uniformly.
-    const fontPx = Math.round(height * BUTTON_PX_PER_M * BUTTON_FONT_RATIO);
+    const canvasW = Math.round(fitted * PX_PER_M);
+    const canvasH = Math.round(height * PX_PER_M);
+    // Shrink to fit rather than clip: a clipped label on a headset panel is
+    // worse than a smaller one, because the learner cannot tell what it lost.
+    const fontPx = fitText(
+      measureCtx(), label, canvasW, TYPE.button.preferred, TYPE.button.min);
     const canvas = this.createTextCanvas(
       label,
-      Math.round(fitted * BUTTON_PX_PER_M),
-      Math.round(height * BUTTON_PX_PER_M),
-      `${fontPx}px Arial`,
-      "#ffffff",
+      canvasW,
+      canvasH,
+      `bold ${fontPx}px ${FONT_STACK}`,
+      INK.primary,
     );
     const texture = new THREE.CanvasTexture(canvas);
     const labelMaterial = new THREE.MeshBasicMaterial({
@@ -1871,9 +1894,9 @@ export class GearSimulator {
     // way, the text would change size the moment a gear was selected.
     const canvas = this.createTextCanvas(
       text,
-      Math.round((0.4 - PANEL.padding * 2) * 1600),
-      Math.round(0.3 * 1600),
-      "30px Arial",
+      Math.round((0.4 - PANEL.padding * 2) * PX_PER_M),
+      Math.round(0.3 * PX_PER_M),
+      `bold ${TYPE.body}px ${FONT_STACK}`,
       textColor,
       true,
       "left",
@@ -2348,10 +2371,10 @@ export class GearSimulator {
     const text = "Gear Jamming! Locked cycle";
     const textCanvas = this.createTextCanvas(
       text,
-      300,
-      40,
-      "16px Arial",
-      "#ffffff",
+      Math.round(0.5 * PX_PER_M),
+      Math.round(0.12 * PX_PER_M),
+      `bold ${TYPE.body}px ${FONT_STACK}`,
+      INK.primary,
     );
     const textTexture = new THREE.CanvasTexture(textCanvas);
     const textMaterial = new THREE.MeshBasicMaterial({
@@ -2390,10 +2413,10 @@ export class GearSimulator {
     const text = "Gears Overlapping!";
     const textCanvas = this.createTextCanvas(
       text,
-      300,
-      40,
-      "16px Arial",
-      "#ffffff",
+      Math.round(0.5 * PX_PER_M),
+      Math.round(0.12 * PX_PER_M),
+      `bold ${TYPE.body}px ${FONT_STACK}`,
+      INK.primary,
     );
     const textTexture = new THREE.CanvasTexture(textCanvas);
     const textMaterial = new THREE.MeshBasicMaterial({
@@ -2524,10 +2547,10 @@ export class GearSimulator {
     const text = `Module ${movingModule} \u2260 Module ${targetModule}`;
     const textCanvas = this.createTextCanvas(
       text,
-      300,
-      40,
-      "16px Arial",
-      "#ffffff",
+      Math.round(0.5 * PX_PER_M),
+      Math.round(0.12 * PX_PER_M),
+      `bold ${TYPE.body}px ${FONT_STACK}`,
+      INK.primary,
     );
     const textTexture = new THREE.CanvasTexture(textCanvas);
     const textMaterial = new THREE.MeshBasicMaterial({

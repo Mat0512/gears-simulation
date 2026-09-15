@@ -49,6 +49,35 @@ export const ROLE = {
 };
 
 /**
+ * Canvas density, in pixels per metre.
+ *
+ * 1024 is what physics, particle, light and periodic-table all use. gears was
+ * at 1600, which is not wrong in itself but means a "30px" font here and a
+ * "30px" font there are different sizes in the world — and every type decision
+ * in this file was being made against a different ruler from the rest of the
+ * workspace.
+ */
+export const PX_PER_M = 1024;
+
+/**
+ * The type scale, in canvas pixels at PX_PER_M.
+ *
+ * Taken from the sibling modules rather than invented: they set titles at 36
+ * shrinking to 18, button labels in the low 30s shrinking to about 15, and body
+ * text at 30. Bold sans-serif throughout — a headset panel is read at a glance
+ * and at an angle, and Arial regular at this size is thin.
+ */
+export const TYPE = {
+    title:        { preferred: 36, min: 18 },
+    sectionLabel: 26,
+    button:       { preferred: 30, min: 15 },
+    value:        28,
+    body:         30,
+};
+
+export const FONT_STACK = 'sans-serif';
+
+/**
  * The layout grid for the left control panel.
  *
  * ONE content width. Every row — the full-width buttons, the animation row and
@@ -58,9 +87,27 @@ export const ROLE = {
  */
 export const PANEL = {
     width: 0.65,
-    height: 1.3,
+    /**
+     * Derived from the rows, not chosen. At 1.3 the content ran out at y=-0.355
+     * against a bottom edge at -0.65, so nearly a quarter of the panel was
+     * empty and the whole thing read as oversized. The rows below come to
+     * 0.865, plus padding is 0.945 — so this is the content, and nothing more.
+     */
+    height: 0.95,
     /** Space between the panel edge and any content. */
     padding: 0.04,
+};
+
+/** Row heights and the gaps between them, so the flow is one description. */
+export const ROW = {
+    button: 0.05,
+    control: 0.045,
+    sectionLabel: 0.04,
+    title: 0.06,
+    /** Between rows inside a section. */
+    gap: 0.013,
+    /** Before a new section heading. */
+    sectionGap: 0.030,
 };
 
 /** Half the content width: every row runs from -EDGE to +EDGE. */
@@ -94,3 +141,44 @@ export const LAYOUT = {
 
 /** Centre y for a panel of this height whose top sits on the shared line. */
 export const centreForTop = (height) => LAYOUT.topLine - height / 2;
+
+/**
+ * Lay rows out from the top of the panel downward.
+ *
+ * The positions used to be a running `yPos` starting at a hand-picked 0.48 and
+ * decremented by a mixture of `rowSpacing`, `buttonSpacing + 0.02` and bare
+ * numbers. Nothing tied that to the panel's height, which is how the content
+ * came to stop 0.3 m short of the bottom edge without anyone noticing.
+ */
+export function createFlow(height = PANEL.height, padding = PANEL.padding) {
+    let cursor = height / 2 - padding;
+    return {
+        /** Centre y for a row of this height, advancing past it. */
+        row(rowHeight, gapBefore = 0) {
+            cursor -= gapBefore;
+            const centre = cursor - rowHeight / 2;
+            cursor -= rowHeight;
+            return centre;
+        },
+        /** Metres of unused panel below the last row. Should be near zero. */
+        get slack() { return cursor - (-height / 2 + padding); },
+    };
+}
+
+/**
+ * Largest size at or below `preferred` that fits `text` into `w` canvas pixels,
+ * never going under `minimum`.
+ *
+ * The sibling modules all have this. Without it a label is simply clipped, and
+ * a clipped label on a headset panel is worse than a smaller one — the learner
+ * cannot tell whether it says "Reset" or "Reset Rotation".
+ */
+export function fitText(ctx, text, w, preferred, minimum) {
+    let size = preferred;
+    ctx.font = `bold ${size}px ${FONT_STACK}`;
+    while (size > minimum && ctx.measureText(String(text)).width > w * 0.92) {
+        size -= 1;
+        ctx.font = `bold ${size}px ${FONT_STACK}`;
+    }
+    return size;
+}
