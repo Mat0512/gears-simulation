@@ -9,7 +9,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { isLocked, reportLocked } from './edition/Edition.js';
 import { TRIAL_LIMITS } from './edition/features.js';
 import { COLOR, INK, ROLE, PANEL, ROW, EDGE, CONTENT_W, GAP, LAYOUT, centreForTop,
-         PX_PER_M, TYPE, FONT_STACK, createFlow, fitText } from './xr/theme.js';
+         PX_PER_M, TYPE, FONT_STACK, createFlow, fitText, fontSizePx } from './xr/theme.js';
 import { makePanelGround, layerPanel } from './xr/panelLayer.js';
 
 /**
@@ -1738,7 +1738,9 @@ export class GearSimulator {
 
     if (multiline) {
       const lines = text.split("\n");
-      const lineHeight = parseInt(font) * 1.4;
+      // fontSizePx, NOT parseInt — parseInt('bold 30px sans-serif') is NaN and
+      // a NaN baseline draws the whole block nowhere, silently.
+      const lineHeight = fontSizePx(font) * 1.4;
       const startY = (height - lines.length * lineHeight) / 2 + lineHeight / 2;
       lines.forEach((line, i) => {
         ctx.fillText(line, anchorX, startY + i * lineHeight);

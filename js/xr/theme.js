@@ -182,3 +182,20 @@ export function fitText(ctx, text, w, preferred, minimum) {
     }
     return size;
 }
+
+/**
+ * The pixel size out of a CSS font string.
+ *
+ * `parseInt(font)` looks like it does this and does NOT: parseInt('bold 30px
+ * sans-serif') is NaN, because the string starts with a word. Any arithmetic on
+ * that NaN spreads — a NaN line height gives a NaN baseline, and fillText at a
+ * NaN y draws NOTHING AT ALL. A whole multi-line block disappears in silence,
+ * with no error anywhere.
+ *
+ * The particle module hit this exact fault and recorded it; this is the same
+ * fix, kept here so both canvases in this module read a size the same way.
+ */
+export function fontSizePx(font, fallback = 16) {
+    const match = /(\d+(?:\.\d+)?)px/.exec(String(font));
+    return match ? parseFloat(match[1]) : fallback;
+}
