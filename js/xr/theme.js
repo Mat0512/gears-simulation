@@ -69,6 +69,8 @@ export const PX_PER_M = 1024;
  */
 export const TYPE = {
     title:        { preferred: 36, min: 18 },
+    /** A heading INSIDE a panel body — the gear's name over its readings. */
+    infoHeading:  32,
     sectionLabel: 26,
     button:       { preferred: 30, min: 15 },
     value:        28,
@@ -76,6 +78,27 @@ export const TYPE = {
 };
 
 export const FONT_STACK = 'sans-serif';
+
+/** The info panel, so both its builder and its redraw agree on the geometry. */
+export const INFO = {
+    width: 0.4,
+    height: 0.5,
+    get content() { return this.width - PANEL.padding * 2; },
+    /** Height of the body block under the title. */
+    body: 0.3,
+};
+
+/**
+ * Ink for the info panel in each state.
+ *
+ * The error states repaint the panel background dark red, purple or orange, and
+ * the accent blue a heading normally uses is barely legible on those. So the
+ * heading takes a colour per state rather than one colour and hope.
+ */
+export const INFO_INK = {
+    normal:  { heading: INK.accent, status: INK.primary,  body: INK.primary },
+    error:   { heading: '#ffffff',  status: '#ffd56b',    body: '#f2f2f2' },
+};
 
 /**
  * The layout grid for the left control panel.

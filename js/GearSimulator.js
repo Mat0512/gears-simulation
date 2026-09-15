@@ -9,7 +9,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { isLocked, reportLocked } from './edition/Edition.js';
 import { TRIAL_LIMITS } from './edition/features.js';
 import { COLOR, INK, ROLE, PANEL, ROW, EDGE, CONTENT_W, GAP, LAYOUT, centreForTop,
-         PX_PER_M, TYPE, FONT_STACK, createFlow, fitText, fontSizePx } from './xr/theme.js';
+         PX_PER_M, TYPE, FONT_STACK, createFlow, fitText, fontSizePx,
+         INFO, INFO_INK } from './xr/theme.js';
 import { makePanelGround, layerPanel } from './xr/panelLayer.js';
 
 /**
@@ -1526,9 +1527,9 @@ export class GearSimulator {
   createInfoPanel() {
     // Same rule as the controls panel: content is the panel minus its padding,
     // and every element spans exactly that.
-    const INFO_W = 0.4;
-    const INFO_H = 0.5;
-    const INFO_CONTENT = INFO_W - PANEL.padding * 2;
+    const INFO_W = INFO.width;
+    const INFO_H = INFO.height;
+    const INFO_CONTENT = INFO.content;
 
     const panel = new THREE.Group();
     panel.name = "infoPanel";
@@ -1564,15 +1565,13 @@ export class GearSimulator {
     panel.add(titleMesh);
 
     // Info content placeholder (will be updated dynamically)
-    const infoCanvas = this.createTextCanvas(
-      "Select a gear\nto view info",
-      Math.round(INFO_CONTENT * PX_PER_M),
-      Math.round(0.3 * PX_PER_M),
-      `bold ${TYPE.body}px ${FONT_STACK}`,
-      INK.secondary,
-      true,
-      "left",
-    );
+    // Same renderer the update path uses, so the panel does not change
+    // appearance the moment a gear is selected.
+    const infoCanvas = this._drawInfoCanvas({
+      heading: null,
+      rows: [["Select a gear", null], ["to view info", null]],
+      ink: { ...INFO_INK.normal, body: INK.secondary },
+    });
     const infoTexture = new THREE.CanvasTexture(infoCanvas);
     const infoMaterial = new THREE.MeshBasicMaterial({
       map: infoTexture,
@@ -1720,6 +1719,81 @@ export class GearSimulator {
     return button;
   }
 
+  /**
+   * The info panel's body: a heading, an optional status line, and label/value
+   * rows whose values are right-aligned to the panel edge.
+   *
+   * Drawn here rather than through createTextCanvas because that draws one
+   * colour at one weight, which is precisely why the gear's name used to be
+   * "--- Gear #1 ---" buried in the body text. A heading wants to look like a
+   * heading.
+   *
+   * @param {{heading: ?string, status: ?string,
+   *          rows: Array<[string, *]>, ink: object}} spec
+   */
+  _drawInfoCanvas({ heading = null, status = null, rows = [], ink }) {
+    const w = Math.round(INFO.content * PX_PER_M);
+    const h = Math.round(INFO.body * PX_PER_M);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, w, h);
+    ctx.textBaseline = "middle";
+
+    const pad = Math.round(w * 0.02);
+    let y = 0;
+
+    if (heading) {
+      ctx.font = `bold ${TYPE.infoHeading}px ${FONT_STACK}`;
+      ctx.fillStyle = ink.heading;
+      ctx.textAlign = "left";
+      y += TYPE.infoHeading * 0.85;
+      ctx.fillText(heading, pad, y);
+
+      // A hairline under it, as the DOM panel has. beginPath FIRST: moveTo and
+      // lineTo APPEND to the current path, so without it this would re-stroke
+      // every path drawn before it.
+      y += TYPE.infoHeading * 0.5;
+      ctx.beginPath();
+      ctx.moveTo(pad, y);
+      ctx.lineTo(w - pad, y);
+      ctx.lineWidth = 2;
+      ctx.globalAlpha = 0.35;
+      ctx.strokeStyle = ink.heading;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      y += TYPE.body * 0.95;
+    } else {
+      y += TYPE.body * 0.85;
+    }
+
+    if (status) {
+      ctx.font = `bold ${TYPE.body}px ${FONT_STACK}`;
+      ctx.fillStyle = ink.status;
+      ctx.textAlign = "left";
+      ctx.fillText(status, pad, y);
+      y += TYPE.body * 1.4;
+    }
+
+    ctx.font = `bold ${TYPE.body}px ${FONT_STACK}`;
+    for (const [label, value] of rows) {
+      ctx.fillStyle = ink.body;
+      ctx.textAlign = "left";
+      ctx.fillText(String(label), pad, y);
+      // A row with no value is a sentence, not a reading — it keeps the full
+      // width rather than being squeezed against a right-aligned blank.
+      if (value !== null && value !== undefined) {
+        ctx.textAlign = "right";
+        ctx.fillText(String(value), w - pad, y);
+      }
+      y += TYPE.body * 1.3;
+    }
+
+    return canvas;
+  }
+
   createTextCanvas(text, width, height, font, color, multiline = false, align = "center") {
     const canvas = document.createElement("canvas");
     canvas.width = width;
@@ -1811,65 +1885,64 @@ export class GearSimulator {
     const infoMesh = this.xrPanels.right?.getObjectByName("infoContent");
     if (!infoMesh || !infoMesh.material) return;
 
-    let text;
-    let textColor = "#e8e8e8";
+    // Built as STRUCTURE, not as one pre-formatted string. The heading used to
+    // be "--- Gear #1 ---" inside the body text, which is what you write when
+    // everything has to be one colour and one weight. It is a heading, so it is
+    // now drawn as one — bold, in its own colour, no dashes — and the readings
+    // under it are label/value pairs so their values line up on the right.
+    let spec = null;
     let errorState = null; // null, "incompatible", "jamming", or "overlap"
 
     if (this.selectedGear && this.selectedGear.params) {
       const gear = this.selectedGear;
       const directionText = gear.rotationDirection >= 0 ? "CW" : "CCW";
+      const heading = `Gear #${gear.id}`;
 
-      // Check if gear is in error state
       if (gear.incompatibleWith) {
-        textColor = "#ffffff"; // White text on colored background
-
         if (gear.overlapError) {
-          // Overlap error (gears too close)
           errorState = "overlap";
-          text =
-            `--- Gear #${gear.id} ---\n` +
-            `!! OVERLAPPING !!\n` +
-            `\n` +
-            `Gears are too\n` +
-            `close together.\n` +
-            `\n` +
-            `Move gear away`;
+          spec = {
+            heading,
+            status: "OVERLAPPING",
+            rows: [["Gears are too close", null], ["Move gear away", null]],
+          };
         } else if (gear.jammingError) {
-          // Jamming error (locked cycle)
           errorState = "jamming";
-          text =
-            `--- Gear #${gear.id} ---\n` +
-            `!! JAMMING !!\n` +
-            `\n` +
-            `Locked gear cycle\n` +
-            `detected.\n` +
-            `\n` +
-            `Move gear away`;
+          spec = {
+            heading,
+            status: "JAMMING",
+            rows: [["Locked gear cycle", null], ["Move gear away", null]],
+          };
         } else {
-          // Module incompatibility
           errorState = "incompatible";
-          const targetModule = gear.incompatibleWith.params?.module || "?";
-          text =
-            `--- Gear #${gear.id} ---\n` +
-            `!! INCOMPATIBLE !!\n` +
-            `Module: ${gear.params.module}\n` +
-            `Target: ${targetModule}\n` +
-            `\n` +
-            `Move gear away\n` +
-            `or change module`;
+          const targetModule = gear.incompatibleWith.params
+            ? gear.incompatibleWith.params.module
+            : "?";
+          spec = {
+            heading,
+            status: "INCOMPATIBLE",
+            rows: [
+              ["Module", gear.params.module],
+              ["Target", targetModule],
+              ["Change module", null],
+            ],
+          };
         }
       } else {
-        text =
-          `--- Gear #${gear.id} ---\n` +
-          `Teeth: ${gear.params.teeth}\n` +
-          `Pitch: ${gear.params.pitchDiameter.toFixed(1)}mm\n` +
-          `Module: ${gear.params.module}\n` +
-          `RPM: ${gear.rpm.toFixed(1)}\n` +
-          `Direction: ${directionText}\n` +
-          `Connected: ${gear.connectedTo ? gear.connectedTo.length : 0}`;
+        spec = {
+          heading,
+          rows: [
+            ["Teeth", gear.params.teeth],
+            ["Pitch", `${gear.params.pitchDiameter.toFixed(1)}mm`],
+            ["Module", gear.params.module],
+            ["RPM", gear.rpm.toFixed(1)],
+            ["Direction", directionText],
+            ["Connected", gear.connectedTo ? gear.connectedTo.length : 0],
+          ],
+        };
       }
     } else {
-      text = "Select a gear\nto view info";
+      spec = { heading: null, rows: [["Select a gear", null], ["to view info", null]] };
     }
 
     // Update panel background color based on error state
@@ -1882,27 +1955,16 @@ export class GearSimulator {
       } else if (errorState === "incompatible") {
         bgMesh.material.color.setHex(0x8b0000); // Dark red for incompatibility
       } else {
-        bgMesh.material.color.setHex(0x0f3460); // Normal blue
+        bgMesh.material.color.setHex(COLOR.bgPanel);
       }
     }
 
-    // Dispose old texture to prevent memory leak
-    if (infoMesh.material.map) {
-      infoMesh.material.map.dispose();
-    }
-
-    // Update texture
-    // Same density and alignment as the panel was built with — drawn any other
-    // way, the text would change size the moment a gear was selected.
-    const canvas = this.createTextCanvas(
-      text,
-      Math.round((0.4 - PANEL.padding * 2) * PX_PER_M),
-      Math.round(0.3 * PX_PER_M),
-      `bold ${TYPE.body}px ${FONT_STACK}`,
-      textColor,
-      true,
-      "left",
-    );
+    // The accent blue a heading normally takes is barely legible on the dark
+    // red, purple and orange the error states paint behind it.
+    const canvas = this._drawInfoCanvas({
+      ...spec,
+      ink: errorState ? INFO_INK.error : INFO_INK.normal,
+    });
     infoMesh.material.map = new THREE.CanvasTexture(canvas);
     infoMesh.material.map.needsUpdate = true;
   }
