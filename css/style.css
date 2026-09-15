@@ -2,7 +2,13 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-      cursor: url("/public/hand-cursor.png") 16 0, pointer;
+      /* Relative to THIS file, so the bundler resolves and fingerprints it and the
+         deploy base is applied for us. It was "/public/hand-cursor.png", which
+         Vite happened to resolve against the module root in the full build and
+         could not resolve at all from the trial's root — so the trial shipped a
+         dead URL and 404'd on every load. A public/ asset cannot be referenced
+         from CSS in a way that survives both roots; a bundled one can. */
+      cursor: url("./hand-cursor.png") 16 0, pointer;
 
 }
 

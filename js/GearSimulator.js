@@ -35,6 +35,27 @@ const BUTTON_PAD_M = 0.011;
 /** Gap between items in a control row, in metres. */
 const ROW_GAP_M = 0.007;
 
+/**
+ * Bind a DOM control if it is there, and say so once if it is not.
+ *
+ * Every control used to be bound as
+ * `document.getElementById(id).addEventListener(...)`, so ONE missing element
+ * threw inside the constructor and took the whole module down — no scene, no
+ * gears, just a null-property error pointing at a minified frame. That is
+ * exactly what a page which does not carry the full control panel produced.
+ *
+ * A missing optional control should cost that control, not the lesson.
+ */
+function bindControl(id, event, handler) {
+    const el = document.getElementById(id);
+    if (!el) {
+        console.warn(`[gears] no #${id} on this page — that control is inactive`);
+        return null;
+    }
+    el.addEventListener(event, handler);
+    return el;
+}
+
 /** One reusable 2D context for measuring text; making one per call is wasteful. */
 let _measureCtx = null;
 function measureTextWidth(text, font) {
@@ -1912,27 +1933,15 @@ export class GearSimulator {
     this.canvas.addEventListener("click", (e) => this.onClick(e));
 
     // UI Controls
-    document
-      .getElementById("btn-add-gear")
-      .addEventListener("click", () => this.addGear());
-    document
-      .getElementById("btn-delete-gear")
-      .addEventListener("click", () => this.deleteSelectedGear());
-    document
-      .getElementById("btn-reset-scene")
-      .addEventListener("click", () => this.resetScene());
+    bindControl("btn-add-gear", "click", () => this.addGear());
+    bindControl("btn-delete-gear", "click", () => this.deleteSelectedGear());
+    bindControl("btn-reset-scene", "click", () => this.resetScene());
 
-    document
-      .getElementById("btn-play")
-      .addEventListener("click", () => this.play());
-    document
-      .getElementById("btn-pause")
-      .addEventListener("click", () => this.pause());
-    document
-      .getElementById("btn-reset-animation")
-      .addEventListener("click", () => this.resetAnimation());
+    bindControl("btn-play", "click", () => this.play());
+    bindControl("btn-pause", "click", () => this.pause());
+    bindControl("btn-reset-animation", "click", () => this.resetAnimation());
 
-    document.getElementById("input-rpm").addEventListener("change", (e) => {
+    bindControl("input-rpm", "change", (e) => {
       this.inputRPM = parseFloat(e.target.value) || 30;
     });
 
@@ -1946,38 +1955,30 @@ export class GearSimulator {
       "param-color",
     ];
     paramInputs.forEach((id) => {
-      document
-        .getElementById(id)
-        .addEventListener("change", () => this.updateSelectedGearParams());
+      bindControl(id, "change", () => this.updateSelectedGearParams());
     });
 
     // Position inputs
     ["pos-x", "pos-y", "pos-z"].forEach((id) => {
-      document
-        .getElementById(id)
-        .addEventListener("change", () => this.updateSelectedGearPosition());
+      bindControl(id, "change", () => this.updateSelectedGearPosition());
     });
 
     // Display toggles
-    document
-      .getElementById("show-pitch-circle")
-      .addEventListener("change", (e) => {
+    bindControl("show-pitch-circle", "change", (e) => {
         this.showPitchCircle = e.target.checked;
         this.updateDisplayOptions();
       });
-    document.getElementById("show-center").addEventListener("change", (e) => {
+    bindControl("show-center", "change", (e) => {
       this.showCenter = e.target.checked;
       this.updateDisplayOptions();
     });
-    document.getElementById("show-labels").addEventListener("change", (e) => {
+    bindControl("show-labels", "change", (e) => {
       this.showLabels = e.target.checked;
       this.updateDisplayOptions();
     });
 
     // Theme toggle
-    document
-      .getElementById("btn-theme-toggle")
-      .addEventListener("click", () => this.toggleTheme());
+    bindControl("btn-theme-toggle", "click", () => this.toggleTheme());
   }
 
   onWindowResize() {

@@ -5,9 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- Inline empty icon: a page that declares none makes the browser
          request /favicon.ico at the WEB ROOT, which this module does not own
-         and which 404s. -->
+         and which 404s. A data: URI satisfies it without shipping a file or
+         referencing anything outside the module slug. -->
     <link rel="icon" href="data:,">
     <title>Simple Machines: Gears — Free Trial — WebXR</title>
+    <link rel="stylesheet" href="../css/style.css">
     <style>
         html, body { margin: 0; padding: 0; height: 100%; background: #05070d; overflow: hidden; }
         #canvas { display: block; width: 100vw; height: 100vh; }
@@ -93,22 +95,115 @@
             <div id="loading-bar"></div>
         </div>
     </div>
-    <canvas id="canvas"></canvas>
+    <div id="container">
+        <canvas id="canvas"></canvas>
+    </div>
 
-    <!-- A classic script in the document, not part of the bundle, and both of
-         its jobs depend on that.
+    <!-- Left Panel - Controls -->
+    <div id="controls-panel" class="panel">
+        <h2>Gear Controls</h2>
 
-         It fetches the entry bundle itself so the bar can follow real bytes. The
-         bundle is 85% of the wait on a slow link and it finishes before any
-         module code exists, so a bar wired only to what boot() can see would sit
-         at zero for over a second and then snap to full.
+        <!-- Gear Management -->
+        <div class="control-section">
+            <h3>Manage Gears</h3>
+            <button id="btn-add-gear">Add Gear</button>
+            <button id="btn-delete-gear">Delete Selected</button>
+            <button id="btn-reset-scene">Reset Scene</button>
+        </div>
 
-         It is also the watchdog for the bundle never arriving at all — most
-         often a dist served from a path it was not built for. A timer inside a
-         bundle that never loaded can never fire, and that failure used to leave
-         the screen up forever, which reads as "still loading" rather than "this
-         is broken". installLoadingScreen() cancels it. -->
-    <script>
+        <!-- Animation Controls -->
+        <div class="control-section">
+            <h3>Animation</h3>
+            <div class="input-group">
+                <label>Input RPM</label>
+                <input type="number" id="input-rpm" value="30" min="1" max="1000">
+            </div>
+            <button id="btn-play">Play</button>
+            <button id="btn-pause">Pause</button>
+            <button id="btn-reset-animation">Reset Rotation</button>
+        </div>
+
+        <!-- Gear Parameters -->
+        <div class="control-section">
+            <h3>Gear Parameters</h3>
+            <div class="input-group">
+                <label>Teeth</label>
+                <input type="number" id="param-teeth" value="20" min="8" max="100">
+            </div>
+            <div class="input-group">
+                <label>Module</label>
+                <input type="number" id="param-module" value="2" min="0.5" max="10" step="0.5">
+            </div>
+            <div class="input-group">
+                <label>Pressure Angle</label>
+                <input type="number" id="param-pressure-angle" value="20" min="14.5" max="25" step="0.5">
+            </div>
+            <div class="input-group">
+                <label>Thickness</label>
+                <input type="number" id="param-thickness" value="5" min="1" max="20">
+            </div>
+            <div class="input-group">
+                <label>Bore Diameter</label>
+                <input type="number" id="param-bore" value="5" min="1" max="20">
+            </div>
+            <div class="input-group">
+                <label>Color</label>
+                <input type="color" id="param-color" value="#4a90d9">
+            </div>
+        </div>
+
+        <!-- Position -->
+        <div class="control-section">
+            <h3>Position</h3>
+            <p class="hint">Drag gear to move. Shift+drag for Z-axis.</p>
+            <div class="input-group">
+                <label>X</label>
+                <input type="number" id="pos-x" value="0">
+            </div>
+            <div class="input-group">
+                <label>Y</label>
+                <input type="number" id="pos-y" value="0">
+            </div>
+            <div class="input-group">
+                <label>Z</label>
+                <input type="number" id="pos-z" value="0">
+            </div>
+        </div>
+
+        <!-- Display Options -->
+        <div class="control-section">
+            <h3>Display</h3>
+            <label class="checkbox-label">
+                <input type="checkbox" id="show-pitch-circle">
+                Show Pitch Circle
+            </label>
+            <label class="checkbox-label">
+                <input type="checkbox" id="show-center">
+                Show Center
+            </label>
+            <label class="checkbox-label">
+                <input type="checkbox" id="show-labels">
+                Show Labels
+            </label>
+            <button id="btn-theme-toggle">Toggle Theme</button>
+        </div>
+    </div>
+
+    <!-- Right Panel - Info -->
+    <div id="info-panel" class="panel">
+        <h2>Gear Info</h2>
+        <div id="gear-info-content">
+            <p class="placeholder">Select a gear to view info</p>
+        </div>
+    </div>
+
+    <!-- Incompatibility Message Panel -->
+    <div id="incompatibility-message" class="message-panel" style="display: none;">
+        <span class="warning-icon">!</span>
+        <span class="message-text">Gears incompatible - modules don't match</span>
+    </div>
+
+        <script>
         (function () {
             var STALL_MS = 20000;
             /* What the bundle download is worth. The rest belongs to scene
