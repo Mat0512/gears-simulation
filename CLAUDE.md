@@ -121,3 +121,50 @@ Four things are load-bearing:
 module has no panel base to build a 3D card on, and its controls are already
 half DOM. In VR a locked control speaks for itself by being grey; the flat page
 is where a prospect meets the trial first.
+
+## XR panel design
+
+Two modules, one palette. `css/style.css` defines the tokens; `js/xr/theme.js`
+mirrors them as numbers because three.js materials want numbers and a
+stylesheet cannot be read from a shader. **If one moves, move the other.**
+`ROLE` is the layer above: a button's colour says what the button *is*
+(primary, neutral, success, warning, danger, locked), so the choice is never
+made by eye.
+
+**One content width per panel.** `EDGE`/`CONTENT_W` is the panel minus its
+padding, and every row spans exactly it — the full-width buttons, the animation
+trio, the RPM stepper, the parameter rows. They used to end at 0.225, 0.215 and
+0.300, which is what made the panel look ragged however neat each row was alone.
+Section headers are left-aligned across the same width, matching the DOM panel.
+
+**Panels are placed as one arrangement.** Side panels mirrored at ±`sideX` with
+equal toe-in, their TOPS on a shared line at eye height; the strip centred under
+the gear scene. All of it in `LAYOUT`.
+
+### The layering rules — why a label punched a hole through its own card
+
+A panel is a stack of COPLANAR quads and three.js orders transparent objects by
+each object's ORIGIN. Head-on that matches the stack; off-axis it does not, so a
+label near the edge sorts *behind* the background it belongs to — and a
+transparent material still writes depth by default, so the background then
+punches a rectangle clean through the label. It reads as a transparency bug. It
+is a depth bug, and it worsens the further a panel is turned away. These are
+toed in 28°.
+
+`js/xr/panelLayer.js` applies the same two rules the physics and periodic-table
+modules use (`PANEL_LAYERING_FIX.md` at the workspace root):
+
+- **The ground is OPAQUE** (`makePanelGround`), so it leaves the transparent
+  pass; the opaque pass runs first and its depth then shields the panel. The
+  grounds were `transparent: true, opacity: 0.9`.
+- **Every mesh stacked on it** gets `depthWrite: false` and a `renderOrder` from
+  its own height in the stack. **Author stacking in millimetres of z** — 0.001
+  is one layer up, 0.011 is eleven — and it comes back as draw order. Nothing to
+  set at the call site. Z accumulates through nested groups, so a button's label
+  sorts above the button it sits on.
+- `layerPanel()` **wraps `add`** rather than walking the children once, so a
+  mesh built later is covered too.
+- Grounds are tracked in a module-private **WeakSet, never a `userData` flag** —
+  `Object3D.clone()` deep-copies userData, so a cloned ground would inherit the
+  exemption and go straight back to punching holes. `tests/panelLayer.test.mjs`
+  pins all of this, including the clone case.

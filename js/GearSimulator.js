@@ -9,6 +9,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { isLocked, reportLocked } from './edition/Edition.js';
 import { TRIAL_LIMITS } from './edition/features.js';
 import { COLOR, INK, ROLE, PANEL, EDGE, CONTENT_W, GAP, LAYOUT, centreForTop } from './xr/theme.js';
+import { makePanelGround, layerPanel } from './xr/panelLayer.js';
 
 /**
  * Button label metrics.
@@ -1029,16 +1030,12 @@ export class GearSimulator {
   createControlsPanel() {
     const panel = new THREE.Group();
     panel.name = "controlsPanel";
+    // Stacking rules on, before anything is added to it.
+    layerPanel(panel);
 
     // Panel background (taller to accommodate new controls)
-    const bgGeometry = new THREE.PlaneGeometry(0.65, 1.3);
-    const bgMaterial = new THREE.MeshBasicMaterial({
-      color: 0x0f3460,
-      transparent: true,
-      opacity: 0.9,
-      side: THREE.DoubleSide,
-    });
-    const background = new THREE.Mesh(bgGeometry, bgMaterial);
+    // Opaque on purpose — see js/xr/panelLayer.js.
+    const background = makePanelGround(0.65, 1.3, 0x0f3460);
     panel.add(background);
 
     // Title
@@ -1513,28 +1510,32 @@ export class GearSimulator {
   }
 
   createInfoPanel() {
+    // Same rule as the controls panel: content is the panel minus its padding,
+    // and every element spans exactly that.
+    const INFO_W = 0.4;
+    const INFO_H = 0.5;
+    const INFO_CONTENT = INFO_W - PANEL.padding * 2;
+
     const panel = new THREE.Group();
     panel.name = "infoPanel";
+    // Stacking rules on, before anything is added to it.
+    layerPanel(panel);
 
     // Panel background
-    const bgGeometry = new THREE.PlaneGeometry(0.4, 0.5);
-    const bgMaterial = new THREE.MeshBasicMaterial({
-      color: 0x0f3460,
-      transparent: true,
-      opacity: 0.9,
-      side: THREE.DoubleSide,
-    });
-    const background = new THREE.Mesh(bgGeometry, bgMaterial);
+    // Opaque on purpose — see js/xr/panelLayer.js.
+    const background = makePanelGround(INFO_W, INFO_H, COLOR.bgPanel);
     background.name = "infoPanelBackground";
     panel.add(background);
 
     // Title
     const titleCanvas = this.createTextCanvas(
       "Gear Info",
-      160,
-      30,
-      "18px Arial",
-      "#4a90d9",
+      Math.round(INFO_CONTENT * 1600),
+      Math.round(0.06 * 1600),
+      "bold 44px Arial",
+      INK.accent,
+      false,
+      "left",
     );
     const titleTexture = new THREE.CanvasTexture(titleCanvas);
     const titleMaterial = new THREE.MeshBasicMaterial({
@@ -1542,7 +1543,7 @@ export class GearSimulator {
       transparent: true,
     });
     const titleMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.32, 0.06),
+      new THREE.PlaneGeometry(INFO_CONTENT, 0.06),
       titleMaterial,
     );
     titleMesh.position.set(0, 0.2, 0.01);
@@ -1563,7 +1564,7 @@ export class GearSimulator {
       transparent: true,
     });
     const infoMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.32, 0.3),
+      new THREE.PlaneGeometry(INFO_CONTENT, 0.3),
       infoMaterial,
     );
     infoMesh.position.set(0, -0.02, 0.01);
@@ -1573,7 +1574,7 @@ export class GearSimulator {
     // Position panel to the right of user
     // The mirror of the controls panel. The old comment here said -30 degrees
     // while the code said -Math.PI/8, which is -22.5.
-    panel.position.set(LAYOUT.sideX, centreForTop(0.5), LAYOUT.z);
+    panel.position.set(LAYOUT.sideX, centreForTop(INFO_H), LAYOUT.z);
     panel.rotation.y = -LAYOUT.toeIn;
 
     return panel;
@@ -1582,16 +1583,12 @@ export class GearSimulator {
   createQuickActionsPanel() {
     const panel = new THREE.Group();
     panel.name = "quickActionsPanel";
+    // Stacking rules on, before anything is added to it.
+    layerPanel(panel);
 
     // Panel background
-    const bgGeometry = new THREE.PlaneGeometry(0.6, 0.12);
-    const bgMaterial = new THREE.MeshBasicMaterial({
-      color: 0x1a1a2e,
-      transparent: true,
-      opacity: 0.85,
-      side: THREE.DoubleSide,
-    });
-    const background = new THREE.Mesh(bgGeometry, bgMaterial);
+    // Opaque on purpose — see js/xr/panelLayer.js.
+    const background = makePanelGround(0.6, 0.12, 0x1a1a2e);
     panel.add(background);
 
     // Quick action buttons
@@ -1870,13 +1867,16 @@ export class GearSimulator {
     }
 
     // Update texture
+    // Same density and alignment as the panel was built with — drawn any other
+    // way, the text would change size the moment a gear was selected.
     const canvas = this.createTextCanvas(
       text,
-      160,
-      150,
-      "14px Arial",
+      Math.round((0.4 - PANEL.padding * 2) * 1600),
+      Math.round(0.3 * 1600),
+      "30px Arial",
       textColor,
       true,
+      "left",
     );
     infoMesh.material.map = new THREE.CanvasTexture(canvas);
     infoMesh.material.map.needsUpdate = true;
@@ -2336,16 +2336,12 @@ export class GearSimulator {
 
     const panel = new THREE.Group();
     panel.name = "incompatibilityPanel";
+    // Stacking rules on, before anything is added to it.
+    layerPanel(panel);
 
     // Panel background (orange)
-    const bgGeometry = new THREE.PlaneGeometry(0.5, 0.12);
-    const bgMaterial = new THREE.MeshBasicMaterial({
-      color: 0xff9800,
-      transparent: true,
-      opacity: 0.95,
-      side: THREE.DoubleSide,
-    });
-    const background = new THREE.Mesh(bgGeometry, bgMaterial);
+    // Opaque on purpose — see js/xr/panelLayer.js.
+    const background = makePanelGround(0.5, 0.12, 0xff9800);
     panel.add(background);
 
     // Warning text
@@ -2382,16 +2378,12 @@ export class GearSimulator {
 
     const panel = new THREE.Group();
     panel.name = "incompatibilityPanel";
+    // Stacking rules on, before anything is added to it.
+    layerPanel(panel);
 
     // Panel background (purple)
-    const bgGeometry = new THREE.PlaneGeometry(0.5, 0.12);
-    const bgMaterial = new THREE.MeshBasicMaterial({
-      color: 0x9c27b0,
-      transparent: true,
-      opacity: 0.95,
-      side: THREE.DoubleSide,
-    });
-    const background = new THREE.Mesh(bgGeometry, bgMaterial);
+    // Opaque on purpose — see js/xr/panelLayer.js.
+    const background = makePanelGround(0.5, 0.12, 0x9c27b0);
     panel.add(background);
 
     // Warning text
@@ -2520,16 +2512,12 @@ export class GearSimulator {
 
     const panel = new THREE.Group();
     panel.name = "incompatibilityPanel";
+    // Stacking rules on, before anything is added to it.
+    layerPanel(panel);
 
     // Panel background (red)
-    const bgGeometry = new THREE.PlaneGeometry(0.5, 0.12);
-    const bgMaterial = new THREE.MeshBasicMaterial({
-      color: 0xf44336,
-      transparent: true,
-      opacity: 0.95,
-      side: THREE.DoubleSide,
-    });
-    const background = new THREE.Mesh(bgGeometry, bgMaterial);
+    // Opaque on purpose — see js/xr/panelLayer.js.
+    const background = makePanelGround(0.5, 0.12, 0xf44336);
     panel.add(background);
 
     // Warning text
