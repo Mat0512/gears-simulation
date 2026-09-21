@@ -85,18 +85,23 @@ as in the screws and light modules. Output goes to `dist-trial/` (gitignored),
 with a RELATIVE base so the folder runs wherever it is dropped — the only thing
 it needs is the URL's trailing slash.
 
-**TEETH IS NEVER LOCKED, in any edition.** The ratio of teeth sets the ratio of
-turns, and that is the whole subject. A trial that cannot change tooth counts
-cannot demonstrate the module — it would be a screenshot rather than proof the
-simulation is real. `tests/edition.test.mjs` asserts no feature id ever names
-teeth, so this cannot be given away by accident.
+**The trial stops partway through the lesson** (the house rule since
+2026-09-21 — see the workspace `CLAUDE.md`). It teaches the first half, that the
+ratio of teeth sets the ratio of turns, on a pair of gears. The second half —
+an idler reverses direction without changing the ratio — needs a third gear,
+and that is where it stops.
 
-What the trial limits instead:
+**TEETH IS NEVER LOCKED, in any edition.** Tooth counts are the half the trial
+does teach; a trial that could not change them would teach nothing.
+`tests/edition.test.mjs` asserts no feature id ever names teeth, and that the
+gear limit is exactly two.
+
+What the trial limits:
 
 ```
-gears.count   a train of three — a driver, an idler and a driven wheel, which
-              is the smallest train that shows an idler reverses direction
-              without changing the ratio
+gears.count   a pair — a driver and a driven wheel. Start-up places the first,
+              the learner adds the second, and the third (the idler) raises
+              the offer
 gears.spec    module, pressure angle, thickness, bore — the manufacturing spec,
               which is depth rather than lesson
 quiz          the LMS-graded exam

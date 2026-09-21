@@ -121,9 +121,11 @@ test('TEETH is never lockable — it is the lesson', () => {
     }
 });
 
-test('the gear limit leaves a train worth seeing', () => {
-    // Two gears cannot show that an idler reverses direction without changing
-    // the ratio; three can. Below three the trial stops demonstrating.
-    assert.ok(TRIAL_LIMITS.maxGears >= 3,
-        `maxGears is ${TRIAL_LIMITS.maxGears} — an idler needs three`);
+test('the gear limit stops the lesson at a pair', () => {
+    // Two gears are the first half of the lesson: teeth set the ratio of turns.
+    // The third gear is the idler, and what it teaches — it reverses direction
+    // without changing the ratio — is the half a trial learner does not finish.
+    // Below two there is no ratio to see at all.
+    assert.equal(TRIAL_LIMITS.maxGears, 2,
+        `maxGears is ${TRIAL_LIMITS.maxGears} — a pair shows the ratio, an idler is the full edition`);
 });

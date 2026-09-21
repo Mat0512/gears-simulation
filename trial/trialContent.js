@@ -23,11 +23,11 @@ export const TRIAL = {
         title: 'FREE TRIAL',
         heading: 'Unlock the full workshop',
         body: [
-            'Mesh gears and change their teeth freely —',
+            'Mesh a pair and change their teeth freely —',
             'the ratio is yours to explore.',
         ],
         includes: [
-            'Gear trains of any length, not three',
+            'Idlers and gear trains of any length, not just a pair',
             'The full spec — module, pressure angle, thickness, bore',
             'The graded quiz, marked and returned to your LMS',
         ],
@@ -46,7 +46,7 @@ export const TRIAL = {
      * feature id so js/ never has to carry a display name for a paid feature.
      */
     featureNames: {
-        'gears.count': 'A fourth gear',
+        'gears.count': 'A third gear — the idler',
         'gears.spec':  'The gear specification',
         'quiz':        'The graded quiz',
     },
