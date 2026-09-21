@@ -120,7 +120,12 @@ Four things are load-bearing:
   gate someone forgets.
 - **A locked control is grey from the start.** `createParamControl` paints the
   spec buttons grey when the edition locks them; a lit button that refuses to
-  work reads as a broken panel rather than a paid feature.
+  work reads as a broken panel rather than a paid feature. ADD GEAR is locked
+  only once the pair is placed, so `_refreshAddGearLock()` greys it (3D and DOM)
+  whenever the count changes — `addGear()`, `deleteSelectedGear()`,
+  `resetScene()` — and lights it again below the limit. It stays pressable; the
+  press still reaches `addGear()`'s gate. It matters most in a headset, where
+  the grey is the only sign the train is full.
 
 **The offer card is DOM, so it is invisible in an immersive session.** This
 module has no panel base to build a 3D card on, and its controls are already

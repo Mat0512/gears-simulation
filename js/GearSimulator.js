@@ -25,9 +25,9 @@ import { makePanelGround, layerPanel } from './xr/panelLayer.js';
 /**
  * The gear's manufacturing spec — everything except TEETH.
  *
- * Teeth is deliberately absent: the ratio of teeth sets the ratio of turns, and
- * that is the whole lesson. A trial that cannot change it cannot demonstrate
- * the module at all.
+ * Teeth is deliberately absent: the ratio of teeth sets the ratio of turns,
+ * which is the half of the lesson every edition teaches. A trial that could not
+ * change it would teach nothing at all.
  */
 const SPEC_PARAMS = new Set(["module", "pressureAngle", "thickness", "boreDiameter"]);
 
@@ -1082,6 +1082,8 @@ export class GearSimulator {
     );
     addGearBtn.position.set(0, yPos, 0.01);
     panel.add(addGearBtn);
+    this._addGearBtn = addGearBtn;
+    this._refreshAddGearLock();
 
     yPos = flow.row(ROW.button, ROW.gap);
     const deleteBtn = this.create3DButton(
@@ -3023,6 +3025,24 @@ export class GearSimulator {
     this.gears.push(gear);
     this.selectGear(gear);
     this.updateDisplayOptions();
+    this._refreshAddGearLock();
+  }
+
+  /**
+   * Grey ADD GEAR while the edition's gear limit is reached, and light it again
+   * when a gear is deleted. In a headset the offer card cannot be seen — it is
+   * DOM — so this button is the only thing that can say the train is full. It
+   * stays PRESSABLE: the press still reaches addGear()'s gate and the offer.
+   */
+  _refreshAddGearLock() {
+    const full = isLocked("gears.count") && this.gears.length >= TRIAL_LIMITS.maxGears;
+    const face = this._addGearBtn?.children[0];
+    if (face) face.material.color.set(full ? ROLE.locked : ROLE.primary);
+    const dom = document.getElementById("btn-add-gear");
+    if (dom) {
+      dom.style.filter = full ? "grayscale(1)" : "";
+      dom.style.opacity = full ? "0.55" : "";
+    }
   }
 
   createDisplayHelpers(gear, gearGeom) {
@@ -3075,6 +3095,7 @@ export class GearSimulator {
     this.gears = this.gears.filter((g) => g !== gearToDelete);
     this.selectedGear = null;
     this.updateGearInfo();
+    this._refreshAddGearLock();
   }
 
   resetScene() {
@@ -3088,6 +3109,7 @@ export class GearSimulator {
     this.selectedGear = null;
     this.isPlaying = false;
     this.updateGearInfo();
+    this._refreshAddGearLock();
   }
 
   play() {

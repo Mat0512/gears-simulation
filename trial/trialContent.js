@@ -46,7 +46,7 @@ export const TRIAL = {
      * feature id so js/ never has to carry a display name for a paid feature.
      */
     featureNames: {
-        'gears.count': 'A third gear — the idler',
+        'gears.count': 'A third gear (the idler)',
         'gears.spec':  'The gear specification',
         'quiz':        'The graded quiz',
     },
