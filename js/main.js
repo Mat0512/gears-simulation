@@ -6,6 +6,7 @@ import { isLocked } from './edition/Edition.js';
 // With type="module", script is deferred so DOM is already ready
 const canvas = document.getElementById('canvas');
 const simulator = new GearSimulator(canvas);
+window.sim = simulator;   // for smoke tests, as the other modules do
 
 // Check for quiz mode via URL params
 // Reads the exam link and takes it out of the address bar in one step, so the

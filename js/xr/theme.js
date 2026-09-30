@@ -57,6 +57,14 @@ export const ROLE = {
  * in this file was being made against a different ruler from the rest of the
  * workspace.
  */
+/**
+ * A COLOR/ROLE token as a CSS string, for the 2D canvas side of a panel.
+ * three.js materials want the number; fillStyle wants the string. Deriving one
+ * from the other keeps the palette a single source of truth — a second literal
+ * is how a canvas ends up a green that is not the success token.
+ */
+export const css = (n) => '#' + n.toString(16).padStart(6, '0');
+
 export const PX_PER_M = 1024;
 
 /**

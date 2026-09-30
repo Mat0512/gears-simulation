@@ -195,3 +195,41 @@ modules use (`PANEL_LAYERING_FIX.md` at the workspace root):
   `Object3D.clone()` deep-copies userData, so a cloned ground would inherit the
   exemption and go straight back to punching holes. `tests/panelLayer.test.mjs`
   pins all of this, including the clone case.
+
+## HOW TO USE — the guided tour
+
+`js/content/howToSteps.js` holds the four steps as **data**: an id, the control
+it points at (`aim`), a heading, one line of body, an optional `needs` feature
+id, and `done(state, start)`. No THREE and no DOM in that file, so Node tests it
+and a speech build can read it later. The runner (`js/tour/tourRunner.js`) and
+the per-page seen flag (`js/tour/seenStore.js`) are molecule's, ported.
+
+- **A step is ticked by STATE, never by an event.** `done` compares
+  `GearSimulator.tourState()` now against what it was when the step began, so
+  "the teeth changed" counts however the learner changed them — 3D panel, DOM
+  control or a drag. Events would have had to be raised at each of those.
+- **The tour never advances itself.** A ticked step says so and waits for NEXT.
+  A card that moved on by itself would take the learner's attention off the
+  thing they had just made happen.
+- **A step whose control the edition withholds is dropped**, not shown locked:
+  `tourSteps()` filters on `needs`, so the trial's tour is three steps, not four
+  with a dead one. `tests/howTo.test.mjs` pins that, and that every `needs` names
+  a **declared** feature — an unknown id fails open, which would send a trial
+  learner to a control that only raises the offer.
+- **The card opens by itself the first time only** (`hasSeen('gears')`,
+  sessionStorage, fails open to "not seen").
+
+### The marker — where to press
+
+`js/xr/StepMarker.js` is a ring and an arrow in `COLOR.success` that sits on the
+control the current step names; `_howToAim()` maps a step's `aim` to a mesh.
+Only one is ever shown and it goes the moment the step ticks. It draws with
+`depthTest: false` on purpose — a cue you cannot find is no cue.
+
+**The card's text is authored in PIXELS, from `TYPE`.** `fontSizePx()` READS a
+px size out of a font string; it does not convert metres. Passing it `0.026`
+returns the fallback 16 silently, which is how every line on this card once came
+out the same size and stacked on the one above it — invisible in every unit test
+and obvious the moment it was rendered. `tests/theme.test.mjs` now greps `js/`
+for a number passed to it. Use `css(COLOR.x)` for a canvas fillStyle so the
+palette stays one source of truth.

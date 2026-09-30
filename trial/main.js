@@ -38,6 +38,7 @@ async function boot() {
 
         const canvas = document.getElementById('canvas');
         sim = new GearSimulator(canvas);
+        window.sim = sim;   // for smoke tests, as the other modules do
 
         // The constructor is synchronous and blocks the main thread throughout,
         // so the bar could not have moved during it — this one bump is the

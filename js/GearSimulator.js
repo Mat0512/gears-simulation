@@ -7,9 +7,13 @@ import { GearGeometry } from "./GearGeometry.js";
 import { asset } from './assetPath.js';
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { isLocked, reportLocked } from './edition/Edition.js';
+import { GEARS_STEPS } from './content/howToSteps.js';
+import { TourRunner, tourSteps } from './tour/tourRunner.js';
+import { hasSeen, markSeen } from './tour/seenStore.js';
+import { StepMarker } from './xr/StepMarker.js';
 import { TRIAL_LIMITS } from './edition/features.js';
 import { COLOR, INK, ROLE, PANEL, ROW, EDGE, CONTENT_W, GAP, LAYOUT, centreForTop,
-         PX_PER_M, TYPE, FONT_STACK, createFlow, fitText, fontSizePx,
+         PX_PER_M, TYPE, FONT_STACK, createFlow, fitText, fontSizePx, css,
          INFO, INFO_INK } from './xr/theme.js';
 import { makePanelGround, layerPanel } from './xr/panelLayer.js';
 
@@ -150,6 +154,7 @@ export class GearSimulator {
       left: null,
       right: null,
       top: null,
+      howTo: null,
       incompatibility: null,
     };
 
@@ -851,6 +856,13 @@ export class GearSimulator {
           }
         });
       }
+      if (this.xrPanels.howTo) {
+        this.xrPanels.howTo.traverse((child) => {
+          if (child.userData.isButton || child.userData.isSlider) {
+            interactables.push(child);
+          }
+        });
+      }
       if (this.xrPanels.top) {
         this.xrPanels.top.traverse((child) => {
           if (child.userData.isButton || child.userData.isSlider) {
@@ -974,6 +986,7 @@ export class GearSimulator {
     collectButtons(this.xrPanels.left);
     collectButtons(this.xrPanels.right);
     collectButtons(this.xrPanels.top);
+    collectButtons(this.xrPanels.howTo);
 
     // Include quiz mode buttons
     if (this.quizMode) {
@@ -1011,6 +1024,24 @@ export class GearSimulator {
     // Create top quick actions panel
     this.xrPanels.top = this.createQuickActionsPanel();
     this.scene.add(this.xrPanels.top);
+
+    // The HOW TO USE card, and the marker that says which control a step means.
+    // Steps whose control this edition withholds are left out, so the trial's
+    // tour never sends a learner to a locked control.
+    const steps = tourSteps(GEARS_STEPS, isLocked);
+    if (steps.length > 0) {
+      this._tour = new TourRunner(steps);
+      this.xrPanels.howTo = this.createHowToPanel();
+      this.scene.add(this.xrPanels.howTo);
+      this._stepMarker = this._stepMarker ?? new StepMarker(this.scene);
+      // Opens by itself the first time this tab reaches the bench; after that
+      // it waits, and QUIZ/… leave it alone.
+      const first = !hasSeen('gears');
+      if (first) markSeen('gears');
+      this.xrPanels.howTo.visible = first;
+      this._tour.begin(this.tourState());
+      this._refreshHowTo();
+    }
   }
 
   removeXRPanels() {
@@ -1026,6 +1057,11 @@ export class GearSimulator {
       this.scene.remove(this.xrPanels.top);
       this.xrPanels.top = null;
     }
+    if (this.xrPanels.howTo) {
+      this.scene.remove(this.xrPanels.howTo);
+      this.xrPanels.howTo = null;
+    }
+    this._stepMarker?.hide();
     // Clear debug logs when exiting XR
     this.debugLogs = [];
   }
@@ -1133,11 +1169,13 @@ export class GearSimulator {
     // Play/Pause/Reset buttons in a row
     yPos = flow.row(ROW.control, ROW.gap);
     const ANIM_W = (CONTENT_W - GAP * 2) / 3;
+    // Kept for the HOW TO USE marker, which points at the control a step names.
     const playBtn = this.create3DButton(ANIM_W, 0.05, "Play", ROLE.success, () =>
       this.play(),
     );
     playBtn.position.set(-EDGE + ANIM_W / 2, yPos, 0.01);
     panel.add(playBtn);
+    this._playBtn = playBtn;
 
     const pauseBtn = this.create3DButton(ANIM_W, 0.05, "Pause", ROLE.warning, () =>
       this.pause(),
@@ -1222,6 +1260,7 @@ export class GearSimulator {
     const teethControl = this.createParamControl("Teeth", "teeth", 8, 100, 1, 10);
     teethControl.position.set(0, yPos, 0.01);
     panel.add(teethControl);
+    this._teethControl = teethControl;
 
     // Module control
     yPos = flow.row(ROW.control, ROW.gap);
@@ -1632,6 +1671,197 @@ export class GearSimulator {
     panel.rotation.x = -LAYOUT.stripTilt;
 
     return panel;
+  }
+
+
+  // ==================== HOW TO USE ====================
+
+  /**
+   * What the tour can see. Plain values only — see js/content/howToSteps.js.
+   */
+  tourState() {
+    return {
+      gears: this.gears.length,
+      playing: this.isPlaying,
+      teeth: this.gears.map((g) => g.params?.teeth ?? 0).join(","),
+    };
+  }
+
+  /**
+   * The HOW TO USE card: a step at a time, ticked off when the learner does it.
+   *
+   * Built with the bench's own parts — makePanelGround, createTextCanvas,
+   * create3DButton — so it reads as one of this module's panels rather than a
+   * transplant. The marker (js/xr/StepMarker.js) says WHICH control each step
+   * means; `_howToAim` maps a step's `aim` to it.
+   */
+  createHowToPanel() {
+    const W = 0.70;
+    const H = 0.47;
+    const panel = new THREE.Group();
+    panel.name = "howToPanel";
+    layerPanel(panel);
+    panel.add(makePanelGround(W, H, COLOR.bgPanel));
+
+    const title = this.createTextCanvas(
+      "HOW TO USE",
+      Math.round(W * PX_PER_M),
+      Math.round(ROW.title * PX_PER_M),
+      `bold ${TYPE.title.preferred}px ${FONT_STACK}`,
+      INK.accent,
+      false,
+      "center",
+    );
+    const titleMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(W - 0.04, ROW.title),
+      new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(title), transparent: true }),
+    );
+    titleMesh.position.set(0, H / 2 - ROW.title / 2 - 0.012, 0.01);
+    panel.add(titleMesh);
+
+    // The body is redrawn on every step change (_refreshHowTo).
+    this._howToBodyCanvas = document.createElement("canvas");
+    this._howToBodyCanvas.width = Math.round((W - 0.06) * PX_PER_M);
+    this._howToBodyCanvas.height = Math.round(0.27 * PX_PER_M);
+    this._howToBodyTex = new THREE.CanvasTexture(this._howToBodyCanvas);
+    const bodyMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(W - 0.06, 0.27),
+      new THREE.MeshBasicMaterial({ map: this._howToBodyTex, transparent: true }),
+    );
+    bodyMesh.position.set(0, 0, 0.01);
+    panel.add(bodyMesh);
+
+    const btnY = -H / 2 + 0.05;
+    const skipBtn = this.create3DButton(0.16, 0.05, "Skip", ROLE.neutral, () =>
+      this._howToClose(),
+    );
+    skipBtn.position.set(-0.16, btnY, 0.01);
+    panel.add(skipBtn);
+
+    this._howToNextBtn = this.create3DButton(0.16, 0.05, "Next", ROLE.primary, () =>
+      this._howToNext(),
+    );
+    this._howToNextBtn.position.set(0.16, btnY, 0.01);
+    panel.add(this._howToNextBtn);
+
+    // Above the gear scene, at eye height, between the two side panels.
+    panel.position.set(0, LAYOUT.topLine + 0.02, LAYOUT.z - 0.25);
+    this._howToPanelSize = { W, H };
+    return panel;
+  }
+
+  /** Redraw the card's body for the step in hand. */
+  _refreshHowTo() {
+    if (!this._howToBodyCanvas || !this._tour) return;
+    const runner = this._tour;
+    const step = runner.step;
+    const c = this._howToBodyCanvas;
+    const ctx = c.getContext("2d");
+    ctx.clearRect(0, 0, c.width, c.height);
+
+    // Sizes in PIXELS on this canvas — fontSizePx() READS a size out of a font
+    // string, it does not convert metres, so passing metres to it silently gave
+    // every line the same 16px fallback and stacked them on each other.
+    const pad = Math.round(c.width * 0.03);
+    const STEP_PX = TYPE.sectionLabel;
+    const HEAD_PX = TYPE.infoHeading;
+    const BODY_PX = 28;
+    const LINE_PX = 36;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+
+    ctx.font = `600 ${STEP_PX}px ${FONT_STACK}`;
+    ctx.fillStyle = INK.secondary;
+    ctx.fillText(`STEP ${runner.index + 1} OF ${runner.total}`, pad, pad);
+
+    ctx.font = `bold ${HEAD_PX}px ${FONT_STACK}`;
+    ctx.fillStyle = INK.primary;
+    ctx.fillText(step.heading, pad, pad + STEP_PX + 8);
+
+    ctx.font = `${BODY_PX}px ${FONT_STACK}`;
+    ctx.fillStyle = INK.secondary;
+    let y = pad + STEP_PX + HEAD_PX + 20;
+    for (const line of this._wrapHowTo(ctx, step.body, c.width - pad * 2)) {
+      ctx.fillText(line, pad, y);
+      y += LINE_PX;
+    }
+
+    if (runner.done) {
+      ctx.font = `bold ${BODY_PX}px ${FONT_STACK}`;
+      ctx.fillStyle = css(COLOR.success);
+      ctx.fillText(
+        `Done. Press ${runner.isLast ? "Finish" : "Next"} when you are ready.`,
+        pad,
+        y + 8,
+      );
+    }
+    this._howToBodyTex.needsUpdate = true;
+
+    // NEXT turns green once the step is done, and says so on the last one.
+    const face = this._howToNextBtn?.children?.[0];
+    if (face) face.material.color.setHex(runner.done ? COLOR.success : ROLE.primary);
+  }
+
+  /** Greedy word wrap against the canvas' current font. */
+  _wrapHowTo(ctx, text, maxWidth) {
+    const lines = [];
+    let line = "";
+    for (const word of String(text).split(/\s+/)) {
+      const attempt = line ? `${line} ${word}` : word;
+      if (line && ctx.measureText(attempt).width > maxWidth) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = attempt;
+      }
+    }
+    if (line) lines.push(line);
+    return lines;
+  }
+
+  _howToNext() {
+    if (!this._tour) return;
+    if (this._tour.next(this.tourState()) === "finished") {
+      this._howToClose();
+      return;
+    }
+    this._refreshHowTo();
+  }
+
+  _howToClose() {
+    if (this.xrPanels.howTo) this.xrPanels.howTo.visible = false;
+    this._stepMarker?.hide();
+  }
+
+  /** The control a step's `aim` names, or null — the marker sits on it. */
+  _howToAim(aim) {
+    const of = (obj) => (obj ? obj.getWorldPosition(new THREE.Vector3()) : null);
+    switch (aim) {
+      case "add-gear":   return of(this._addGearBtn);
+      case "play":       return of(this._playBtn);
+      case "teeth":      return of(this._teethControl);
+      case "info-panel": return of(this.xrPanels.right);
+      default:           return null;
+    }
+  }
+
+  /** Every frame in a session: tick the step off, and move the marker. */
+  updateHowTo() {
+    if (!this._tour || !this.xrPanels.howTo?.visible) {
+      this._stepMarker?.hide();
+      return;
+    }
+    if (this._tour.tick(this.tourState())) this._refreshHowTo();
+
+    const at = this._tour.done ? null : this._howToAim(this._tour.step.aim);
+    if (at) {
+      this._stepMarker.showAt(at);
+      this._stepMarker.update(
+        this.renderer.xr.isPresenting ? this.renderer.xr.getCamera() : this.camera,
+      );
+    } else {
+      this._stepMarker.hide();
+    }
   }
 
   debugLog(message) {
@@ -3282,6 +3512,7 @@ export class GearSimulator {
           this.debugLog(`XR ERR: ${xrErr.message}`);
         }
         this.updateXRUI();
+        this.updateHowTo();
       } else {
         this.orbitControls.update();
       }

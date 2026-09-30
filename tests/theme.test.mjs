@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
     PANEL, ROW, EDGE, CONTENT_W, GAP, PX_PER_M, TYPE, FONT_STACK,
-    createFlow, fitText, fontSizePx,
+    createFlow, fitText, fontSizePx, css, COLOR,
 } from '../js/xr/theme.js';
 
 // A 2D context stand-in: fitText only ever sets `font` and measures. Widths are
@@ -93,4 +93,33 @@ test('a parameter row fits between the label and the panel edge', () => {
     assert.ok(startsAt > -0.165,
         `the widest strip starts at ${startsAt.toFixed(3)} and would overrun the label`);
     assert.ok(strip <= CONTENT_W, 'a row cannot be wider than the content width');
+});
+
+
+test('css() gives back the palette token as a string, padded', () => {
+    assert.equal(css(COLOR.success), '#4caf50');
+    assert.equal(css(0x0a0a1a), '#0a0a1a', 'a leading zero survives');
+    // The canvas side must never carry its own literal — that is how a panel
+    // ends up a green that is not the token.
+    assert.equal(css(COLOR.success).length, 7);
+});
+
+test('nobody passes metres to fontSizePx', async () => {
+    // It READS a px size out of a font string; it does not convert. Given a
+    // number it silently returns the fallback, so every line on a card gets
+    // the same size and they stack on each other. It cost a headset pass on
+    // the HOW TO USE card, 2026-09-30.
+    assert.equal(fontSizePx(0.026), 16, 'the trap itself');
+    assert.equal(fontSizePx('bold 26px sans-serif'), 26);
+
+    const { readdir, readFile } = await import('node:fs/promises');
+    const roots = ['js', 'js/xr', 'js/tour', 'js/content', 'js/edition'];
+    for (const dir of roots) {
+        for (const name of await readdir(dir)) {
+            if (!name.endsWith('.js')) continue;
+            const src = await readFile(`${dir}/${name}`, 'utf8');
+            const bad = src.match(/fontSizePx\(\s*[0-9.]/g);
+            assert.equal(bad, null, `${dir}/${name} passes a number to fontSizePx`);
+        }
+    }
 });
