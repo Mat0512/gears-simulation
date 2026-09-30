@@ -222,9 +222,26 @@
             var screenEl = document.getElementById('loading-screen');
             var barEl = document.getElementById('loading-bar');
             var failed = false;
+            var lastPct = 0;
+            var stall = null;
+
+            /* STALL_MS is a silence, not a deadline. It used to be measured from
+               page load to the module starting, so a headset on hotel wifi got
+               "could not start" at 20s with the bar at 45% and climbing — the
+               download was healthy and the module ran perfectly a few seconds
+               later, with the red error still on the screen. A slow link is not
+               a broken one. The clock now restarts on every sign of life. */
+            function armStall() {
+                clearTimeout(stall);
+                stall = setTimeout(function () {
+                    showLoadError('No progress for ' + STALL_MS / 1000 + 's.');
+                }, STALL_MS);
+            }
 
             function setLoadProgress(pct) {
-                barEl.style.width = Math.max(0, Math.min(100, pct)) + '%';
+                var w = Math.max(0, Math.min(100, pct));
+                barEl.style.width = w + '%';
+                if (w > lastPct) { lastPct = w; armStall(); }
             }
 
             /** @param reason the diagnosis, for the console — never for the screen. */
@@ -257,12 +274,30 @@
                 }
             }, true);
 
-            var stall = setTimeout(function () {
-                showLoadError('The module did not start within ' + STALL_MS / 1000 + 's.');
-            }, STALL_MS);
+            armStall();
+
+            /* Between the entry bundle finishing and the chunks it imports
+               arriving, nothing reports progress — but the network is plainly
+               working. A request completing is a sign of life like any other. */
+            try {
+                new PerformanceObserver(function () {
+                    if (!failed) armStall();
+                }).observe({ type: 'resource', buffered: true });
+            } catch (e) { /* no PerformanceObserver: the bar is the only signal */ }
 
             // Called by installLoadingScreen(): the bundle loaded and boot() ran.
-            window.pxLoadStarted = function () { clearTimeout(stall); };
+            window.pxLoadStarted = function () {
+                clearTimeout(stall);
+                // It started after all, so the watchdog was wrong — take the
+                // red away rather than leaving a working module wearing a
+                // failure notice, which is what a learner reported seeing.
+                if (failed) {
+                    failed = false;
+                    screenEl.classList.remove('error');
+                    var msg = screenEl.querySelector('.load-error');
+                    if (msg) msg.parentNode.removeChild(msg);
+                }
+            };
 
             /**
              * Fetch the entry bundle, filling the bar from its bytes, then run
